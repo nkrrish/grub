@@ -774,7 +774,8 @@ body.drawer-open .drawer {
 .term {
   flex: 1;
   min-height: 0;
-  padding: 12px 6px 6px 16px;
+  /* margin, not padding: the fit addon measures this box, so padding cost the last row */
+  margin: 12px 6px 14px 16px;
 }
 
 /* ---------- confirm modal ---------- */
