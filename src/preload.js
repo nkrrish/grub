@@ -9,9 +9,10 @@ const on = (channel) => (fn) => {
 contextBridge.exposeInMainWorld('mole', {
   available: () => ipcRenderer.invoke('mole:available'),
   version: () => ipcRenderer.invoke('mole:version'),
-  analyze: (p) => ipcRenderer.invoke('mole:analyze', p),
+  analyze: (p, fresh) => ipcRenderer.invoke('mole:analyze', p, fresh),
   history: () => ipcRenderer.invoke('mole:history'),
-  apps: () => ipcRenderer.invoke('mole:apps'),
+  apps: (fresh) => ipcRenderer.invoke('mole:apps', fresh),
+  dropCache: (prefixes) => ipcRenderer.invoke('cache:drop', prefixes),
   home: () => ipcRenderer.invoke('mole:home'),
   reveal: (p) => ipcRenderer.invoke('mole:reveal', p),
   appIcon: (p) => ipcRenderer.invoke('app:icon', p),
@@ -24,7 +25,7 @@ contextBridge.exposeInMainWorld('mole', {
     removeLogin: (name) => ipcRenderer.invoke('startup:removeLogin', name),
     openAutomationSettings: () => ipcRenderer.invoke('perm:open', 'automation'),
   },
-  updates: () => ipcRenderer.invoke('updates:list'),
+  updates: (fresh) => ipcRenderer.invoke('updates:list', fresh),
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (patch) => ipcRenderer.invoke('settings:set', patch),

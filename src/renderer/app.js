@@ -124,6 +124,31 @@ function digging(text) {
   );
 }
 
+/* ---------- remembered scans ---------- */
+
+// Scans are cached across launches; pages show how old theirs is and quietly rescan past these ages.
+const HOUR = 3600e3;
+const TTL = { apps: 24 * HOUR, disk: 24 * HOUR, updates: 6 * HOUR };
+const isStale = (at, ttl) => !!at && Date.now() - at > ttl;
+
+function ago(at) {
+  const m = Math.round((Date.now() - at) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} h ago`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'yesterday' : `${d} days ago`;
+}
+
+// "Checked 3 h ago · Refresh" line; busy swaps it for a checking note.
+function setFreshness(id, at, busy) {
+  const slot = $('#' + id);
+  slot.querySelector('.fresh-text').textContent = busy ? 'Checking…' : at ? `Checked ${ago(at)}` : '';
+  slot.querySelector('button').disabled = !!busy;
+  slot.classList.toggle('is-busy', !!busy);
+}
+
 /* ---------- Grub's face ---------- */
 
 {
@@ -177,11 +202,21 @@ function show(view, chore) {
     b.classList.toggle('is-active', b.dataset.view === view && (view !== 'chores' || b.dataset.chore === chore))
   );
   if (view === 'chores') renderChore(chore);
-  if (view === 'dig' && !digState.loaded) dig(digState.home);
-  if (view === 'evict' && !appsLoaded) loadApps();
+  if (view === 'dig') {
+    if (!digState.loaded) dig(digState.home);
+    else if (isStale(digState.cache.get(digState.path)?.at, TTL.disk)) dig(digState.path, null, true);
+    else setFreshness('dig-fresh', digState.cache.get(digState.path)?.at);
+  }
+  if (view === 'evict') {
+    if (!appsLoaded || isStale(appsAt, TTL.apps)) loadApps(appsLoaded);
+    else setFreshness('evict-fresh', appsAt);
+  }
   if (view === 'history') loadHistory();
   if (view === 'startup') loadStartup();
-  if (view === 'updates' && !updatesLoaded) loadUpdates();
+  if (view === 'updates') {
+    if (!updatesLoaded || isStale(updatesAt, TTL.updates)) loadUpdates(updatesLoaded);
+    else setFreshness('updates-fresh', updatesAt);
+  }
   syncRunner();
 }
 
@@ -432,37 +467,50 @@ const digState = { home: '', path: '', loaded: false, cache: new Map(), entries:
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
 const EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 
-async function dig(target, fromTile) {
+// fresh rescans the folder while the old answer stays on screen
+async function dig(target, fromTile, fresh) {
   digState.loaded = true;
   digState.path = target;
   renderCrumbs();
-  $('#dig-total').textContent = '';
   const list = $('#dig-list');
   // a new dig (say, back via the breadcrumb) abandons any zoom still waiting on its folder
   digState.zoom?.cancel();
   const zoom = fromTile && digState.layout === 'map' ? zoomInto(fromTile, target) : null;
   digState.zoom = zoom;
-  let res = digState.cache.get(target);
+  let res = fresh ? null : digState.cache.get(target);
   if (!res) {
-    if (!zoom) {
-      $('#dig-map').replaceChildren();
-      list.replaceChildren(digging('Tunnelling through ' + target.replace(digState.home, '~') + '…'));
+    if (fresh) setFreshness('dig-fresh', 0, true);
+    else {
+      $('#dig-total').textContent = '';
+      setFreshness('dig-fresh', 0);
+      if (!zoom) {
+        $('#dig-map').replaceChildren();
+        list.replaceChildren(digging('Tunnelling through ' + target.replace(digState.home, '~') + '…'));
+      }
     }
-    res = await window.mole.analyze(target);
+    res = await window.mole.analyze(target, fresh);
     if (res.ok) digState.cache.set(target, res);
   }
   if (zoom) await zoom.grown;
   if (digState.zoom !== zoom) return; // superseded; the newer dig already cleaned up
   digState.zoom = null;
   if (digState.path !== target) return;
+  const shown = digState.cache.get(target);
   if (!res.ok) {
     zoom?.cancel();
+    setFreshness('dig-fresh', shown?.at);
+    // a failed rescan keeps the last good answer on screen
+    if (fresh && shown) return;
     return list.replaceChildren(el('div', { class: 'empty' }, 'Grub hit a rock: ' + res.error));
   }
   digState.entries = (res.data.entries || []).filter((e) => e.size > 0).slice(0, 80);
   renderDig();
   zoom?.reveal();
+  setFreshness('dig-fresh', res.at);
+  if (!fresh && isStale(res.at, TTL.disk)) dig(target, null, true);
 }
+
+$('#dig-refresh').addEventListener('click', () => dig(digState.path, null, true));
 
 // The clicked tile grows to fill the map (clip-path only), then dissolves to show what's inside.
 function zoomInto(tile, target) {
@@ -707,17 +755,29 @@ $('#chore-chomp').addEventListener('click', () => {
 /* ---------- uninstall ---------- */
 
 let appsLoaded = false;
+let appsAt = 0;
 let apps = [];
 
-async function loadApps() {
+// Shows the remembered list straight away; fresh (or a stale cache) rescans with the old list still up.
+async function loadApps(fresh) {
   appsLoaded = true;
   const list = $('#evict-list');
-  list.replaceChildren(digging('Counting your apps…'));
-  const res = await window.mole.apps();
-  if (!res.ok) return list.replaceChildren(el('div', { class: 'empty' }, 'Could not list apps: ' + res.error));
+  if (!apps.length) list.replaceChildren(digging('Counting your apps…'));
+  setFreshness('evict-fresh', appsAt, true);
+  const res = await window.mole.apps(fresh);
+  if (!res.ok) {
+    setFreshness('evict-fresh', appsAt);
+    if (!apps.length) list.replaceChildren(el('div', { class: 'empty' }, 'Could not list apps: ' + res.error));
+    return;
+  }
   apps = res.data.map((a) => ({ ...a, bytes: parseSize(a.size) })).sort((a, b) => b.bytes - a.bytes);
+  appsAt = res.at;
   renderApps();
+  setFreshness('evict-fresh', appsAt);
+  if (!fresh && isStale(appsAt, TTL.apps)) loadApps(true);
 }
+
+$('#evict-refresh').addEventListener('click', () => loadApps(true));
 
 function renderApps() {
   const q = $('#evict-search').value.trim().toLowerCase();
@@ -888,15 +948,26 @@ async function loadStartup() {
 /* ---------- updates ---------- */
 
 let updatesLoaded = false;
+let updatesAt = 0;
 let outdated = { formulae: [], casks: [] };
 
-async function loadUpdates() {
+async function loadUpdates(fresh) {
   updatesLoaded = true;
   const list = $('#updates-list');
-  $('#update-all').disabled = true;
-  list.replaceChildren(digging('Sniffing for stale versions…'));
-  const res = await window.mole.updates();
-  if (!res.ok) return list.replaceChildren(el('div', { class: 'empty' }, 'Homebrew did not answer: ' + res.error));
+  if (!updatesAt) {
+    $('#update-all').disabled = true;
+    list.replaceChildren(digging('Sniffing for stale versions…'));
+  }
+  setFreshness('updates-fresh', updatesAt, true);
+  const res = await window.mole.updates(fresh);
+  if (!res.ok) {
+    setFreshness('updates-fresh', updatesAt);
+    if (!updatesAt) list.replaceChildren(el('div', { class: 'empty' }, 'Homebrew did not answer: ' + res.error));
+    return;
+  }
+  updatesAt = res.at;
+  setFreshness('updates-fresh', updatesAt);
+  if (!fresh && isStale(updatesAt, TTL.updates)) loadUpdates(true);
   outdated = { formulae: res.data.formulae || [], casks: res.data.casks || [] };
   const all = [
     ...outdated.casks.map((c) => ({ ...c, cask: true })),
