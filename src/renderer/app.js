@@ -201,7 +201,7 @@ function healthTitle(score) {
 // What's dragging the score down, worst first. Each culprit has a few lines; one is picked
 // when it takes over and kept, so the headline doesn't reshuffle on every 2s update.
 const CULPRIT_LINES = {
-  disk: [(v) => `Only ${v.free} left. Snack time.`, () => "Disk's stuffed. Grub's drooling.", (v) => `${v.pct}% full. Dinner is served.`],
+  disk: [(v) => `Only ${v.free} of disk left. Snack time.`, () => "Disk's stuffed. Grub's drooling.", (v) => `Disk's ${v.pct}% full. Dinner is served.`],
   memory: [() => "Memory's full. Grub can't think.", (v) => `${v.pct}% memory. The burrow's crowded.`],
   swap: [(v) => `${v.swap} of swap. Messy burrow.`],
   cpu: [() => "CPU's sweating. Grub smells smoke.", (v) => `CPU at ${v.pct}%. Something's chewing.`],
