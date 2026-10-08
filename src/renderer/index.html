@@ -122,7 +122,7 @@
             </div>
 
             <div class="card card-disk">
-              <div class="card-title">Disk</div>
+              <div class="card-head"><span class="card-title">Disk</span><span class="chip" id="disk-chip" hidden></span></div>
               <div class="big"><span id="disk-free">--</span> <small>free</small></div>
               <div class="bar"><div class="bar-fill" id="disk-bar"></div></div>
               <p class="note" id="disk-note">&nbsp;</p>
@@ -134,26 +134,57 @@
             </div>
 
             <div class="card">
-              <div class="card-title">CPU</div>
+              <div class="card-head"><span class="card-title">CPU</span><span class="chip" id="cpu-chip" hidden></span></div>
               <div class="big"><span id="cpu-use">--</span><small>%</small></div>
               <div class="cores" id="cpu-cores"></div>
               <p class="note" id="cpu-note">&nbsp;</p>
             </div>
 
             <div class="card">
-              <div class="card-title">Memory</div>
+              <div class="card-head"><span class="card-title">Memory</span><span class="chip" id="mem-chip" hidden></span></div>
               <div class="big"><span id="mem-use">--</span><small>%</small></div>
               <div class="bar"><div class="bar-fill bar-pink" id="mem-bar"></div></div>
               <p class="note" id="mem-note">&nbsp;</p>
             </div>
 
             <div class="card">
-              <div class="card-title">Battery</div>
-              <div class="big"><span id="bat-pct">--</span><small>%</small></div>
+              <div class="card-head"><span class="card-title">Battery</span><span class="chip" id="bat-chip" hidden></span></div>
+              <div class="big"><span id="bat-pct">--</span><small id="bat-state">%</small></div>
+              <dl class="facts" id="bat-facts"></dl>
               <p class="note" id="bat-note">&nbsp;</p>
             </div>
 
-            <div class="card card-machine">
+            <div class="card">
+              <div class="card-head"><span class="card-title">Network</span><span class="chip" id="net-chip" hidden></span></div>
+              <div class="big"><span id="net-down">--</span><small id="net-unit">KB/s</small></div>
+              <div class="spark" id="net-spark"></div>
+              <p class="note" id="net-note">&nbsp;</p>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-title">Heat &amp; fan</span><span class="chip" id="heat-chip" hidden></span></div>
+              <div class="big"><span id="heat-big">--</span><small id="heat-unit"></small></div>
+              <dl class="facts" id="heat-facts"></dl>
+              <p class="note" id="heat-note">&nbsp;</p>
+            </div>
+
+            <div class="card card-procs">
+              <div class="card-head"><span class="card-title">Hungriest apps right now</span><span class="chip" id="procs-chip" hidden></span></div>
+              <div class="procs" id="procs"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-title">Graphics</span><span class="chip" id="gpu-chip" hidden></span></div>
+              <div class="big"><span id="gpu-big">--</span><small id="gpu-unit"></small></div>
+              <p class="note" id="gpu-note">&nbsp;</p>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-title">Gadgets</span><span class="chip" id="bt-chip" hidden></span></div>
+              <div class="gadgets" id="gadgets"></div>
+            </div>
+
+            <div class="card">
               <div class="card-title">Machine</div>
               <dl class="facts" id="machine-facts"></dl>
             </div>
@@ -387,6 +418,7 @@
 
     <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
     <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script src="vitals.js"></script>
     <script src="app.js"></script>
     <script src="runner.js"></script>
   </body>

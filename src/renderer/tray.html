@@ -18,39 +18,90 @@
         <div class="score" id="t-score">--</div>
       </header>
 
-      <div class="meters">
-        <div class="meter">
-          <div class="meter-top"><span>Disk</span><b id="t-disk">--</b></div>
-          <div class="bar"><i id="t-disk-bar"></i></div>
+      <div class="panel" id="vitals">
+        <div class="tiles">
+          <section class="tile" data-section="cpu">
+            <div class="tile-top"><span>CPU</span><em id="t-cpu-chip"></em></div>
+            <b><span id="t-cpu">--</span><small>%</small></b>
+            <div class="spark" id="t-cpu-spark"></div>
+            <p id="t-cpu-note">&nbsp;</p>
+          </section>
+          <section class="tile" data-section="memory">
+            <div class="tile-top"><span>Memory</span><em id="t-mem-chip"></em></div>
+            <b><span id="t-mem">--</span><small>%</small></b>
+            <div class="bar"><i class="pink" id="t-mem-bar"></i></div>
+            <p id="t-mem-note">&nbsp;</p>
+          </section>
+          <section class="tile" data-section="disk">
+            <div class="tile-top"><span>Disk</span><em id="t-disk-chip"></em></div>
+            <b><span id="t-disk">--</span><small id="t-disk-unit">free</small></b>
+            <div class="bar"><i id="t-disk-bar"></i></div>
+            <p id="t-disk-note">&nbsp;</p>
+          </section>
+          <section class="tile" data-section="network">
+            <div class="tile-top"><span>Network</span><em id="t-net-chip"></em></div>
+            <b><span id="t-net">--</span><small id="t-net-unit">KB/s</small></b>
+            <div class="spark" id="t-net-spark"></div>
+            <p id="t-net-note">&nbsp;</p>
+          </section>
+          <section class="tile" data-section="gpu">
+            <div class="tile-top"><span>Graphics</span><em id="t-gpu-chip"></em></div>
+            <b><span id="t-gpu">--</span><small id="t-gpu-unit"></small></b>
+            <p id="t-gpu-note">&nbsp;</p>
+          </section>
+          <section class="tile" data-section="heat">
+            <div class="tile-top"><span>Heat &amp; fan</span><em id="t-heat-chip"></em></div>
+            <b><span id="t-heat">--</span><small id="t-heat-unit"></small></b>
+            <p id="t-heat-note">&nbsp;</p>
+          </section>
         </div>
-        <div class="meter">
-          <div class="meter-top"><span>CPU</span><b id="t-cpu">--</b></div>
-          <div class="bar"><i id="t-cpu-bar"></i></div>
-        </div>
-        <div class="meter">
-          <div class="meter-top"><span>Memory</span><b id="t-mem">--</b></div>
-          <div class="bar"><i class="pink" id="t-mem-bar"></i></div>
-        </div>
-        <div class="meter-row">
-          <div><span>Battery</span><b id="t-bat">--</b></div>
-          <div><span>Network</span><b id="t-net">--</b></div>
-          <div><span>Up</span><b id="t-up">--</b></div>
+
+        <section class="wide" data-section="battery">
+          <div class="tile-top"><span>Battery</span><em id="t-bat-chip"></em></div>
+          <div class="bat-row">
+            <b><span id="t-bat">--</span><small id="t-bat-state">%</small></b>
+          </div>
+          <p id="t-bat-note">&nbsp;</p>
+        </section>
+
+        <section class="wide" data-section="apps">
+          <div class="tile-top"><span>Hungriest apps</span><em>Memory · CPU</em></div>
+          <div class="procs" id="t-procs"></div>
+        </section>
+
+        <section class="wide" data-section="gadgets">
+          <div class="tile-top"><span>Gadgets</span><em id="t-bt-chip"></em></div>
+          <div class="gadgets" id="t-gadgets"></div>
+        </section>
+
+        <div class="actions" data-section="actions">
+          <button class="act act-primary" data-run="tidy">
+            <span>Tidy up</span><small>clean, then optimize</small>
+          </button>
+          <button class="act" data-run="clean-dry"><span>Sniff for junk</span><small>dry run</small></button>
+          <button class="act" data-open="dig"><span>Disk map</span><small>what's big</small></button>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="act act-primary" data-run="tidy">
-          <span>Tidy up</span><small>clean, then optimize</small>
+      <div class="panel" id="customize" hidden>
+        <div class="cust-head">
+          <b>What's in the menu</b>
+          <span>Pick what Grub shows here.</span>
+        </div>
+        <div class="cust-list" id="cust-list"></div>
+        <button class="cust-row cust-extra" role="switch" id="cust-text" aria-checked="true">
+          <span><b>Numbers next to the icon</b><small>CPU and free disk in the menu bar</small></span>
+          <i class="switch" aria-hidden="true"></i>
         </button>
-        <button class="act" data-run="clean-dry"><span>Sniff for junk</span><small>dry run</small></button>
-        <button class="act" data-open="dig"><span>Disk map</span><small>what's big</small></button>
       </div>
 
       <footer class="foot">
         <button data-open="burrow">Open Grub</button>
+        <button id="t-customize" aria-pressed="false">Customize</button>
         <button id="t-quit">Quit</button>
       </footer>
     </div>
+    <script src="vitals.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>

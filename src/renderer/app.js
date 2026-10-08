@@ -286,27 +286,139 @@ function renderStatus(s) {
   const per = cpu.per_core || [];
   if (cores.children.length !== per.length) cores.replaceChildren(...per.map(() => el('i')));
   per.forEach((v, i) => cores.children[i].style.setProperty('--v', `${Math.max(4, v)}%`));
-  const load = cpu.usage ?? 0;
-  $('#cpu-note').textContent = `${cpu.core_count ?? '?'} cores. ${load < 20 ? 'Napping.' : load < 60 ? 'Digging steadily.' : 'Sweating through its fur.'}`;
+  $('#cpu-note').textContent = `${cpu.core_count ?? '?'} cores. ${Vitals.cpuWord(cpu.usage ?? 0)}`;
+
+  const heat = Vitals.heat(s);
+  chip('#cpu-chip', heat.cpuTemp != null && `${heat.cpuTemp}°C`);
 
   const mem = s.memory || {};
   $('#mem-use').textContent = (mem.used_percent ?? 0).toFixed(0);
   $('#mem-bar').style.setProperty('--v', (mem.used_percent ?? 0) / 100);
-  $('#mem-note').textContent = `${bytes(mem.used)} of ${bytes(mem.total)}${mem.swap_used ? ` · ${bytes(mem.swap_used)} swap` : ''}`;
+  $('#mem-note').textContent = `${bytes(mem.used)} of ${bytes(mem.total)} used. ${Vitals.memWord(mem.used_percent ?? 0)}`;
+  chip('#mem-chip', mem.swap_used >= 1e9 && `${bytes(mem.swap_used)} swap`);
 
-  const bat = s.batteries?.[0];
-  $('#bat-pct').textContent = bat ? bat.percent : '--';
-  $('#bat-note').textContent = bat
-    ? `${bat.status} · health ${bat.health} · ${bat.cycle_count} cycles · ${bat.capacity}% capacity`
-    : 'No battery. Plugged into the earth.';
+  if (disk) chip('#disk-chip', bytes(disk.total));
 
-  const facts = [
+  const bat = Vitals.battery(s);
+  $('#bat-pct').textContent = bat ? bat.pct : '--';
+  $('#bat-state').textContent = bat ? `% · ${bat.state}` : '';
+  chip('#bat-chip', bat?.health && `Health ${bat.health}`);
+  facts(
+    '#bat-facts',
+    bat
+      ? [
+          bat.detail && ['Now', bat.detail],
+          ['Holds', `${bat.capacity}% of when new`],
+          ['Charged', `${bat.cycles} times`],
+          bat.charger && ['Charger', `${bat.charger} W`],
+        ]
+      : []
+  );
+  $('#bat-note').textContent = !bat ? 'No battery. Plugged into the earth.' : bat.worn ? 'Getting tired. Running on crumbs.' : 'Healthy. Plenty of juice left in it.';
+
+  const net = Vitals.network(s);
+  const down = Vitals.speed(net.down);
+  const up = Vitals.speed(net.up);
+  $('#net-down').textContent = down.value;
+  $('#net-unit').textContent = `${down.unit} down`;
+  netHistory.push(net.down + net.up);
+  if (netHistory.length > 30) netHistory.shift();
+  spark($('#net-spark'), netHistory);
+  chip('#net-chip', net.vpn && 'VPN on');
+  $('#net-note').textContent = net.online ? `${up.value} ${up.unit} up. ${net.down + net.up < 0.05 ? 'Quiet line.' : 'Busy line.'}` : 'Offline. Grub is underground.';
+
+  const big = heat.cpuTemp ?? heat.fan ?? heat.power;
+  $('#heat-big').textContent = big ?? '--';
+  $('#heat-unit').textContent = heat.cpuTemp != null ? '°C' : heat.fan != null ? 'RPM' : heat.power != null ? 'W used' : '';
+  chip('#heat-chip', heat.gpuTemp != null && `Graphics ${heat.gpuTemp}°C`);
+  facts('#heat-facts', [['Fan', heat.fanLabel], heat.power != null && ['Power use', `${heat.power} W`]]);
+  $('#heat-note').textContent = heat.note;
+
+  const g = Vitals.gpu(s);
+  $('#gpu-big').textContent = g ? (g.usage ?? g.cores) : '--';
+  $('#gpu-unit').textContent = g ? (g.usage != null ? '%' : 'cores') : '';
+  chip('#gpu-chip', g?.usage != null && `${g.cores} cores`);
+  $('#gpu-note').textContent = !g ? 'No graphics chip found.' : g.usage == null ? `${g.name}. It won’t say how busy it is.` : g.usage < 20 ? 'Idle. Nothing to draw.' : 'Drawing hard.';
+
+  renderProcs(s);
+  renderGadgets(s);
+  chip('#procs-chip', s.procs && `${s.procs} things running`);
+
+  facts('#machine-facts', [
     ['Chip', s.hardware?.cpu_model],
     ['RAM', s.hardware?.total_ram],
     ['macOS', s.hardware?.os_version?.replace('macOS ', '')],
+    ['Screen', s.hardware?.refresh_rate],
     ['Trash', bytes(s.trash_size)],
-  ];
-  $('#machine-facts').replaceChildren(...facts.flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v || '—')]));
+  ]);
+}
+
+const netHistory = [];
+
+function chip(sel, text) {
+  const node = $(sel);
+  node.hidden = !text;
+  if (text) node.textContent = text;
+}
+
+function facts(sel, rows) {
+  $(sel).replaceChildren(...rows.filter(Boolean).flatMap(([k, v]) => [el('dt', {}, k), el('dd', {}, v || '—')]));
+}
+
+// Bars scaled to the busiest moment in view.
+function spark(node, values) {
+  const max = Math.max(...values, 0.001);
+  if (node.children.length !== 30) node.replaceChildren(...Array.from({ length: 30 }, () => el('i')));
+  const pad = 30 - values.length;
+  [...node.children].forEach((bar, i) => bar.style.setProperty('--v', i < pad ? 0 : Math.max(0.04, values[i - pad] / max)));
+}
+
+// Rows are reused across updates; only an icon whose app changed is swapped, so nothing blinks.
+function renderProcs(s) {
+  const list = Vitals.apps(s);
+  const maxMem = Math.max(...list.map((p) => p.mem), 1);
+  const box = $('#procs');
+  if (!box.children.length)
+    box.append(el('div', { class: 'proc proc-head' }, el('span'), el('span', {}, 'App'), el('span', {}, 'Memory'), el('span', {}, 'CPU')));
+  while (box.children.length > list.length + 1) box.lastChild.remove();
+  while (box.children.length < list.length + 1)
+    box.append(
+      el('div', { class: 'proc' }, el('span'), el('span', { class: 'proc-name' }), el('span', { class: 'proc-mem' }, el('i'), el('span')), el('span', { class: 'proc-cpu' }))
+    );
+  list.forEach((p, i) => {
+    const row = box.children[i + 1];
+    if (row.dataset.app !== String(p.app)) {
+      row.dataset.app = String(p.app);
+      row.firstChild.replaceWith(procIcon(p.app));
+    }
+    row.children[1].textContent = p.label;
+    row.children[2].firstChild.style.setProperty('--v', p.mem / maxMem);
+    row.children[2].lastChild.textContent = bytes(p.mem);
+    row.children[3].textContent = `${p.cpu.toFixed(0)}%`;
+    row.children[3].classList.toggle('is-hot', p.cpu >= 50);
+  });
+}
+
+const procIcons = new Map();
+
+function procIcon(path) {
+  if (!path) return icon(ICON_APP);
+  const img = el('img', { class: 'row-app-icon', alt: '', width: 22, height: 22 });
+  if (!procIcons.has(path)) procIcons.set(path, window.mole.appIcon(path));
+  procIcons.get(path).then((url) => url && (img.src = url));
+  return img;
+}
+
+function renderGadgets(s) {
+  const { connected, paired } = Vitals.gadgets(s);
+  chip('#bt-chip', paired && `${paired} paired`);
+  if (!connected.length)
+    return $('#gadgets').replaceChildren(el('p', { class: 'note' }, paired ? 'Nothing connected right now.' : 'No Bluetooth gadgets yet.'));
+  $('#gadgets').replaceChildren(
+    ...connected.map((d) =>
+      el('div', { class: 'gadget' }, el('span', { class: 'gadget-name' }, d.name), el('span', { class: 'gadget-bat' }, d.battery != null ? `${d.battery}%` : ''))
+    )
+  );
 }
 
 /* ---------- disk ---------- */
