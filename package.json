@@ -1,7 +1,7 @@
 {
   "name": "grub",
   "version": "0.1.0",
-  "description": "A free, slightly unhinged GUI for the Mole Mac cleanup CLI.",
+  "description": "A free, open-source Mac cleaner with a live health dashboard, disk map, menu bar stats, startup control and updates.",
   "main": "src/main.js",
   "license": "GPL-3.0-or-later",
   "private": true,
