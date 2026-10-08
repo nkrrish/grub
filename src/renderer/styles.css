@@ -398,6 +398,139 @@ h1 {
   white-space: nowrap;
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.card-procs {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.procs {
+  display: grid;
+}
+
+.proc {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 200px 64px;
+  align-items: center;
+  gap: 14px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.proc:last-child {
+  border-bottom: 0;
+}
+
+.proc-head {
+  min-height: 26px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proc > :nth-child(n + 3) {
+  text-align: right;
+}
+
+.proc .row-icon,
+.proc .row-app-icon {
+  width: 22px;
+  height: 22px;
+  animation: none; /* rebuilt every update; a fade would blink */
+}
+
+.proc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.proc-mem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.proc-mem i {
+  width: 90px;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(to right, var(--nose) calc(var(--v) * 100%), var(--surface-3) 0);
+}
+
+.proc-cpu {
+  color: var(--muted);
+}
+
+.proc-cpu.is-hot {
+  color: var(--danger);
+}
+
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+}
+
+.spark i {
+  flex: 1;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--rot);
+  transform-origin: bottom;
+  transform: scaleY(var(--v, 0));
+  transition: transform 500ms var(--ease-out);
+}
+
+.gadgets {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.gadget {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.gadget-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gadget-bat {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
 }

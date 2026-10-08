@@ -72,8 +72,11 @@ function startWatcher() {
       } catch {
         continue;
       }
-      broadcast('status', lastStatus);
-      updateTrayTitle(lastStatus);
+      nameProcesses(lastStatus).then((st) => {
+        if (st !== lastStatus) return; // a newer snapshot arrived meanwhile
+        broadcast('status', st);
+        updateTrayTitle(st);
+      });
     }
   });
   watcher.on('exit', () => {
@@ -81,6 +84,59 @@ function startWatcher() {
     setTimeout(startWatcher, 5000);
   });
   watcher.on('error', () => {});
+}
+
+// Plain names for the system processes people actually see at the top.
+const FRIENDLY = {
+  kernel_task: 'macOS itself',
+  WindowServer: 'Screen drawing',
+  cloudd: 'iCloud sync',
+  bird: 'iCloud Drive',
+  cloudphotod: 'iCloud Photos',
+  photolibraryd: 'Photos library',
+  mds: 'Spotlight search',
+  mds_stores: 'Spotlight search',
+  mdworker: 'Spotlight search',
+  mdworker_shared: 'Spotlight search',
+  'com.apple.WebKit.WebContent': 'Web pages',
+  'com.apple.WebKit.GPU': 'Web pages',
+  photoanalysisd: 'Photos scanning',
+  mediaanalysisd: 'Photos scanning',
+  backupd: 'Time Machine',
+  softwareupdated: 'Software Update',
+  coreaudiod: 'Sound',
+  bluetoothd: 'Bluetooth',
+  launchd: 'macOS startup',
+  syspolicyd: 'App security checks',
+  XprotectService: 'Malware scanning',
+  trustd: 'Certificate checks',
+  fileproviderd: 'Cloud files',
+  nsurlsessiond: 'Background downloads',
+  Python: 'Python script',
+  node: 'Node script',
+};
+
+const procCache = new Map(); // pid -> { app, label }
+
+// Adds the owning .app (for its icon) and a human name to each top process.
+async function nameProcesses(s) {
+  const procs = s.top_processes || [];
+  const missing = procs.filter((p) => !procCache.has(p.pid)).map((p) => p.pid);
+  if (missing.length) {
+    if (procCache.size > 500) procCache.clear();
+    const { stdout } = await run('/bin/ps', ['-o', 'pid=,comm=', '-p', missing.join(',')], { timeout: 5000 });
+    const paths = new Map(stdout.split('\n').map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter(Boolean).map((m) => [+m[1], m[2]]));
+    for (const pid of missing) {
+      const app = /^(.*?\.app)\//.exec(paths.get(pid) || '')?.[1] || null;
+      procCache.set(pid, { app, label: app ? path.basename(app, '.app') : null });
+    }
+  }
+  for (const p of procs) {
+    const known = procCache.get(p.pid) || {};
+    p.app = known.app || null;
+    p.label = known.label || FRIENDLY[p.name] || p.name;
+  }
+  return s;
 }
 
 /* ---------- startup items ---------- */
@@ -205,7 +261,13 @@ ipcMain.on('session:kill', () => session?.kill());
 /* ---------- settings ---------- */
 
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
-const DEFAULTS = { onboarded: false, autoUpdateMole: true, lastMoleUpdate: 0 };
+const DEFAULTS = {
+  onboarded: false,
+  autoUpdateMole: true,
+  lastMoleUpdate: 0,
+  menuBarText: true,
+  menuSections: ['cpu', 'memory', 'disk', 'network', 'battery', 'apps', 'actions'],
+};
 
 function readSettings() {
   try {
@@ -222,11 +284,77 @@ function writeSettings(patch) {
   return next;
 }
 
+/* ---------- scan cache: slow listings survive restarts and refresh on request ---------- */
+
+const CACHE_FILE = () => path.join(app.getPath('userData'), 'scan-cache.json');
+const MAX_FOLDERS = 40; // Disk remembers this many folders
+let scanCache;
+const inflight = new Map(); // key -> pending scan, so a click and a background refresh share one run
+
+function cacheStore() {
+  if (!scanCache) {
+    try {
+      scanCache = JSON.parse(fs.readFileSync(CACHE_FILE(), 'utf8'));
+    } catch {
+      scanCache = {};
+    }
+  }
+  return scanCache;
+}
+
+function saveCache() {
+  const store = cacheStore();
+  const folders = Object.keys(store)
+    .filter((k) => k.startsWith('analyze:'))
+    .sort((a, b) => store[a].at - store[b].at);
+  for (const k of folders.slice(0, -MAX_FOLDERS)) delete store[k];
+  fs.mkdirSync(path.dirname(CACHE_FILE()), { recursive: true });
+  fs.writeFileSync(CACHE_FILE(), JSON.stringify(store));
+}
+
+// Answers from the cache unless asked for a fresh scan; results carry `at` so the page can say how old they are.
+function cached(key, fresh, scan) {
+  const hit = cacheStore()[key];
+  if (hit && !fresh) return { ok: true, ...hit };
+  if (!inflight.has(key)) {
+    inflight.set(
+      key,
+      scan()
+        .then((res) => {
+          if (!res.ok) return res;
+          cacheStore()[key] = { at: Date.now(), data: res.data };
+          saveCache();
+          return { ok: true, ...cacheStore()[key] };
+        })
+        .finally(() => inflight.delete(key))
+    );
+  }
+  return inflight.get(key);
+}
+
+ipcMain.handle('cache:drop', (_e, prefixes) => {
+  const store = cacheStore();
+  for (const k of Object.keys(store)) if (prefixes.some((p) => k.startsWith(p))) delete store[k];
+  saveCache();
+});
+
 ipcMain.handle('settings:get', () => ({ ...readSettings(), openAtLogin: app.getLoginItemSettings().openAtLogin }));
 ipcMain.handle('settings:set', (_e, patch) => {
   if ('openAtLogin' in patch) app.setLoginItemSettings({ openAtLogin: !!patch.openAtLogin });
   const { openAtLogin: _ignored, ...rest } = patch;
-  return { ...writeSettings(rest), openAtLogin: app.getLoginItemSettings().openAtLogin };
+  const next = writeSettings(rest);
+  broadcast('settings', next);
+  if ('menuBarText' in patch && lastStatus) updateTrayTitle(lastStatus);
+  return { ...next, openAtLogin: app.getLoginItemSettings().openAtLogin };
+});
+
+// The menu grows to fit the sections people pick, up to the screen height.
+ipcMain.on('popover:height', (_e, h) => {
+  if (!popover || !Number.isFinite(h)) return;
+  const b = popover.getBounds();
+  const area = screen.getDisplayNearestPoint({ x: b.x, y: b.y }).workArea;
+  const height = Math.min(Math.ceil(h), area.height - 16);
+  if (b.height !== height) popover.setBounds({ ...b, height });
 });
 
 /* ---------- permissions ---------- */
@@ -285,9 +413,11 @@ ipcMain.handle('mole:update', updateMoleQuietly);
 
 ipcMain.handle('mole:available', () => !!find('mo'));
 ipcMain.handle('mole:version', async () => (await run(mo(), ['--version'])).stdout.trim());
-ipcMain.handle('mole:analyze', (_e, target) => runJson(mo(), ['analyze', '--json', target || HOME], { timeout: 300000 }));
+ipcMain.handle('mole:analyze', (_e, target, fresh) =>
+  cached('analyze:' + (target || HOME), fresh, () => runJson(mo(), ['analyze', '--json', target || HOME], { timeout: 300000 }))
+);
 ipcMain.handle('mole:history', () => runJson(mo(), ['history', '--json']));
-ipcMain.handle('mole:apps', () => runJson(mo(), ['uninstall', '--list']));
+ipcMain.handle('mole:apps', (_e, fresh) => cached('apps', fresh, () => runJson(mo(), ['uninstall', '--list'])));
 ipcMain.handle('mole:home', () => HOME);
 ipcMain.handle('mole:reveal', (_e, p) => shell.showItemInFolder(p));
 
@@ -311,8 +441,10 @@ ipcMain.handle('app:icon', async (_e, p) => {
 ipcMain.handle('startup:list', listStartup);
 ipcMain.handle('startup:toggle', (_e, a) => toggleAgent(a));
 ipcMain.handle('startup:removeLogin', (_e, name) => removeLoginItem(name));
-ipcMain.handle('updates:list', () =>
-  runJson(BREW, ['outdated', '--json=v2'], { timeout: 180000, env: { ...ENV, HOMEBREW_NO_AUTO_UPDATE: '1' } })
+ipcMain.handle('updates:list', (_e, fresh) =>
+  cached('updates', fresh, () =>
+    runJson(BREW, ['outdated', '--json=v2'], { timeout: 180000, env: { ...ENV, HOMEBREW_NO_AUTO_UPDATE: '1' } })
+  )
 );
 ipcMain.handle('status:last', () => lastStatus);
 ipcMain.on('status:start', startWatcher);
@@ -369,7 +501,7 @@ function createTray() {
   tray.on('right-click', togglePopover);
 
   popover = new BrowserWindow({
-    width: 320,
+    width: 340,
     height: 452,
     show: false,
     frame: false,
@@ -400,6 +532,7 @@ function togglePopover() {
 }
 
 function updateTrayTitle(s) {
+  if (!readSettings().menuBarText) return tray?.setTitle('');
   const disk = (s.disks || []).find((d) => d.mount === '/');
   const free = disk ? (disk.total - disk.used) / 1e9 : null;
   const cpu = Math.round(s.cpu?.usage ?? 0);

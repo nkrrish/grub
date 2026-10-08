@@ -28,7 +28,9 @@ contextBridge.exposeInMainWorld('mole', {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (patch) => ipcRenderer.invoke('settings:set', patch),
+    onChange: on('settings'),
   },
+  popoverHeight: (h) => ipcRenderer.send('popover:height', h),
   perms: {
     check: () => ipcRenderer.invoke('perm:check'),
     automation: () => ipcRenderer.invoke('perm:automation'),

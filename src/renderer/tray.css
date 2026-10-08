@@ -18,13 +18,13 @@
 html,
 body {
   margin: 0;
-  height: 100%;
   background: transparent;
   color: var(--text);
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button {
@@ -43,9 +43,8 @@ button {
 .pop {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  height: 100%;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
@@ -96,31 +95,161 @@ button {
   color: var(--danger);
 }
 
-.meters {
+.panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(243, 237, 228, 0.04);
+  gap: 8px;
 }
 
-.meter-top,
-.meter-row > div {
+.panel[hidden],
+[data-section][hidden],
+.tiles[hidden] {
+  display: none;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tile,
+.wide {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(243, 237, 228, 0.05);
+}
+
+.tile.is-wide {
+  grid-column: span 2;
+}
+
+.tile-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
+  font-size: 12px;
 }
 
-.meter-top b,
-.meter-row b {
-  color: var(--text);
-  font-weight: 600;
+.tile-top em {
+  font-style: normal;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tile b,
+.wide b {
+  font: 600 22px/1 'Fredoka Variable', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile b small,
+.wide b small {
+  margin-left: 3px;
+  color: var(--muted);
+  font: 500 12px -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.tile p,
+.wide p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+
+.spark i {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--rot);
+  transform-origin: bottom;
+  transform: scaleY(var(--v, 0));
+  transition: transform 500ms var(--ease-out);
+}
+
+.procs {
+  display: grid;
+  gap: 2px;
+}
+
+.proc {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 58px 34px;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 12px;
+}
+
+.proc-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.proc-icon.is-system {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.8;
+}
+
+.proc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proc-num {
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.proc-num.is-hot {
+  color: var(--danger);
+}
+
+.gadgets {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.gadget {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gadget span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gadget em {
+  color: var(--muted);
+  font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
 .bar {
   height: 6px;
-  margin-top: 5px;
   border-radius: 99px;
   overflow: hidden;
   background: rgba(243, 237, 228, 0.08);
@@ -144,15 +273,93 @@ button {
   background: var(--danger);
 }
 
-.meter-row {
+/* ---------- customize ---------- */
+
+.cust-head {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding-top: 2px;
+  gap: 2px;
+  padding: 2px 2px 4px;
 }
 
-.meter-row > div {
-  flex-direction: column;
+.cust-head b {
+  font: 600 14px 'Fredoka Variable', sans-serif;
+}
+
+.cust-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cust-list {
+  display: grid;
+  border-radius: 12px;
+  background: rgba(243, 237, 228, 0.05);
+  overflow: hidden;
+}
+
+.cust-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.cust-list .cust-row + .cust-row {
+  border-top: 1px solid var(--line);
+}
+
+.cust-row span {
+  display: grid;
+  min-width: 0;
+}
+
+.cust-row b {
+  font-weight: 600;
+}
+
+.cust-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cust-extra {
+  border-radius: 12px;
+  background: rgba(243, 237, 228, 0.05);
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border-radius: 99px;
+  background: rgba(243, 237, 228, 0.16);
+  transition: background-color 150ms ease;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 180ms var(--ease-out);
+}
+
+.cust-row[aria-checked='true'] .switch {
+  background: var(--rot);
+}
+
+.cust-row[aria-checked='true'] .switch::after {
+  transform: translateX(12px);
+  background: #14110f;
 }
 
 .actions {
@@ -205,6 +412,9 @@ button {
   .foot button:hover {
     color: var(--text);
   }
+  .cust-row:hover {
+    background: rgba(243, 237, 228, 0.05);
+  }
 }
 
 .foot {
@@ -222,7 +432,10 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bar i {
+  .bar i,
+  .spark i,
+  .switch,
+  .switch::after {
     transition: none;
   }
 }
