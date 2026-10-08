@@ -1,4 +1,6 @@
 // Schedule: what Grub checks on by itself, how often, and what it found.
+// Wrapped in its own scope: every renderer script shares one global namespace.
+(() => {
 
 const ROUTINES = [
   {
@@ -650,3 +652,6 @@ window.mole.schedule.get().then((snap) => {
   sched = snap;
   renderBadge();
 });
+
+window.showSchedule = showSchedule;
+})();
