@@ -126,6 +126,16 @@ function digging(text) {
 
 /* ---------- Grub's face ---------- */
 
+{
+  const big = $('#grub-face').cloneNode(true);
+  big.id = 'run-face';
+  big.setAttribute('width', '84');
+  big.setAttribute('height', '84');
+  big.querySelector('clipPath').id = 'grub-hole-run';
+  big.querySelector('[clip-path]').setAttribute('clip-path', 'url(#grub-hole-run)');
+  $('#run-face-slot').append(big);
+}
+
 // Blinks at random intervals (sometimes twice) so the idle face never feels like a loop.
 (function blinkLoop() {
   const face = $('#grub-face');
