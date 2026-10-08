@@ -268,6 +268,9 @@ function zoomInto(tile, target) {
   );
   map.append(layer);
   map.classList.add('is-zooming');
+  // read the parent's colours now, while the layer is attached (re-rendering detaches it)
+  const cs = getComputedStyle(layer);
+  const tone = Object.fromEntries(['a', 'b', 'dot'].map((v) => [v, cs.getPropertyValue(`--tile-${v}`).trim()]));
   const reduce = REDUCED_MOTION.matches;
   for (const other of map.querySelectorAll('.tile')) other.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
   const grow = reduce
@@ -286,10 +289,14 @@ function zoomInto(tile, target) {
       }
       // The new tiles start in the parent's colour, so the big tile seems to crack apart,
       // then each one settles into its own colour, biggest first.
-      const cs = getComputedStyle(layer);
-      for (const v of ['a', 'b', 'dot']) map.style.setProperty(`--born-${v}`, cs.getPropertyValue(`--tile-${v}`));
+      for (const v of ['a', 'b', 'dot']) map.style.setProperty(`--born-${v}`, tone[v]);
       const tiles = [...map.querySelectorAll('.tile')];
-      tiles.forEach((t) => t.classList.add('is-born'));
+      // no entrance keyframes for these tiles: they're already on screen, and the keyframes
+      // would restart from opacity 0 when is-born comes off (the dark flash)
+      tiles.forEach((t) => {
+        t.style.animation = 'none';
+        t.classList.add('is-born');
+      });
       layer.remove();
       tiles.forEach((t, i) => setTimeout(() => t.classList.remove('is-born'), 90 + Math.min(i, 12) * 45));
     },
