@@ -7,5 +7,5 @@
       <ellipse cx="32" cy="42" rx="5.6" ry="4" fill="#000"/>
     </mask>
   </defs>
-  <path d="M13 54V37C13 25.4 21.5 16 32 16s19 9.4 19 21v17z" fill="#000" mask="url(#face)"/>
+  <path d="M13 47V37C13 25.4 21.5 16 32 16s19 9.4 19 21v10a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#000" mask="url(#face)"/>
 </svg>

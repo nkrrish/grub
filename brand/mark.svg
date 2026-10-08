@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <!-- head: a dome with a soft brow -->
-  <path d="M13 56V37C13 25.4 21.5 16 32 16s19 9.4 19 21v19z" fill="#B8E34D"/>
+  <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
   <!-- eyes: one awake, one rotten -->
   <circle cx="24.5" cy="33" r="2.7" fill="#14110F"/>
   <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>

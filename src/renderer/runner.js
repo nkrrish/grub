@@ -489,6 +489,8 @@ const PROMPTS = [
   { id: 'inst-ok', re: /Delete \d+ installers?.*confirm/ },
   { id: 'proceed', re: /Proceed with uninstallation\? \[y\/N\]/ },
   { id: 'app-ok', re: /Remove \d+ app\(s\).*confirm/ },
+  // any other yes/no question, e.g. Homebrew's "Do you want to proceed with the upgrade? [y/n]"
+  { id: 'yn', re: /^(?!.*Proceed with uninstallation).*\[[yY]\/[nN]\]:?\s*$/ },
   { id: 'creds', re: /Enter your credentials:/ },
 ];
 
@@ -540,6 +542,18 @@ async function respond(id, lines) {
         ],
       });
       send(v === 'ok' ? '\r' : ' ');
+    } else if (id === 'yn') {
+      const line = lines.map((l) => l.trim()).filter((l) => PROMPTS.find((p) => p.id === 'yn').re.test(l)).at(-1) || '';
+      const question = line.replace(/^==>\s*/, '').replace(/\s*\[[yY]\/[nN]\]:?\s*$/, '');
+      const v = await ask({
+        title: question.endsWith('?') ? question : question + '?',
+        body: run.key === 'brew' ? 'Homebrew is asking before it changes anything.' : 'The engine is asking before it continues.',
+        buttons: [
+          { label: 'No', value: 'no' },
+          { label: 'Yes', value: 'yes', primary: true },
+        ],
+      });
+      send(v === 'yes' ? 'y\r' : 'n\r');
     } else if (id === 'purge-ok' || id === 'inst-ok') send('\r');
     else if (id === 'proceed') send('y\r');
     else if (id === 'app-ok') {
