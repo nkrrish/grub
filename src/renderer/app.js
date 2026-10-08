@@ -138,11 +138,11 @@ function digging(text) {
 
 // Blinks at random intervals (sometimes twice) so the idle face never feels like a loop.
 (function blinkLoop() {
-  const face = $('#grub-face');
+  const faces = () => $$('.grub-face');
   const blink = (then) => {
-    face.classList.add('is-blinking');
+    faces().forEach((f) => f.classList.add('is-blinking'));
     setTimeout(() => {
-      face.classList.remove('is-blinking');
+      faces().forEach((f) => f.classList.remove('is-blinking'));
       then?.();
     }, 140);
   };

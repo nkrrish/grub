@@ -1972,33 +1972,27 @@ body.ask-open .scrim {
   transform-origin: center;
 }
 
-body.is-running.run-visible #run-face .gf-head,
 body.is-running:not(.run-visible) #grub-face .gf-head {
   animation: chomp 620ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-body.is-running.run-visible #run-face .gf-teeth,
 body.is-running:not(.run-visible) #grub-face .gf-teeth {
   animation: clack 155ms ease-in-out infinite alternate;
 }
 
-body.is-running.run-visible #run-face .gf-crumbs rect,
 body.is-running:not(.run-visible) #grub-face .gf-crumbs rect {
   animation: fling 620ms var(--ease-out) infinite;
 }
 
-body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(1),
 body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(1) {
   --dx: -10px;
 }
 
-body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(2),
 body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(2) {
   --dx: 10px;
   animation-delay: 210ms;
 }
 
-body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(3),
 body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(3) {
   --dx: -16px;
   animation-delay: 410ms;
@@ -2036,7 +2030,230 @@ body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(3) {
   }
   100% {
     opacity: 0;
-    transform: translate(var(--dx), -16px) rotate(140deg);
+    transform: translate(var(--dx), var(--dy, -16px)) rotate(140deg);
+  }
+}
+
+/* ---------- run screen moods: one move per chore ---------- */
+
+#run-face .gf-nose {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+#run-face .gf-head {
+  transition: transform 300ms var(--ease-out);
+}
+
+#run-face .gf-crumbs rect {
+  fill: var(--crumb, #7a5f49);
+}
+
+/* sniff: sway and wiggle the snout */
+#runner[data-mood='sniff'] #run-face .gf-head {
+  animation: sway 1300ms cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+#runner[data-mood='sniff'] #run-face .gf-nose {
+  animation: sniff 900ms ease-in-out infinite;
+}
+
+/* chomp: dip, clack, crumbs */
+#runner[data-mood='chomp'] #run-face .gf-head {
+  animation: chomp 620ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+#runner[data-mood='chomp'] #run-face .gf-teeth {
+  animation: clack 155ms ease-in-out infinite alternate;
+}
+
+#runner[data-mood='chomp'] #run-face .gf-crumbs rect,
+#runner[data-mood='dig'] #run-face .gf-crumbs rect,
+#runner[data-mood='shred'] #run-face .gf-crumbs rect,
+#runner[data-mood='fluff'] #run-face .gf-crumbs rect {
+  animation: fling var(--fling-ms, 620ms) var(--ease-out) infinite;
+}
+
+#run-face .gf-crumbs rect:nth-child(1) {
+  --dx: -10px;
+}
+
+#run-face .gf-crumbs rect:nth-child(2) {
+  --dx: 10px;
+  animation-delay: calc(var(--fling-ms, 620ms) / 3) !important;
+}
+
+#run-face .gf-crumbs rect:nth-child(3) {
+  --dx: -16px;
+  animation-delay: calc(var(--fling-ms, 620ms) * 2 / 3) !important;
+}
+
+/* dig: deep dives with a big spray */
+#runner[data-mood='dig'] {
+  --fling-ms: 480ms;
+  --dy: -22px;
+}
+
+#runner[data-mood='dig'] #run-face .gf-head {
+  animation: dig 480ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* shred: fast teeth, pale paper bits */
+#runner[data-mood='shred'] {
+  --crumb: #f3ede4;
+  --fling-ms: 360ms;
+}
+
+#runner[data-mood='shred'] #run-face .gf-teeth {
+  animation: clack 80ms linear infinite alternate;
+}
+
+#runner[data-mood='shred'] #run-face .gf-head {
+  animation: jitter 160ms linear infinite;
+}
+
+/* evict: shove sideways, X eye spins */
+#runner[data-mood='evict'] #run-face .gf-head {
+  animation: shove 900ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+#runner[data-mood='evict'] #run-face .gf-x {
+  animation: twirl 900ms var(--ease-out) infinite;
+}
+
+/* fluff: slow stretch, green sparkles drifting up */
+#runner[data-mood='fluff'] {
+  --crumb: #b8e34d;
+  --fling-ms: 1500ms;
+  --dy: -20px;
+}
+
+#runner[data-mood='fluff'] #run-face .gf-head {
+  animation: stretch 1500ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+#runner[data-mood='fluff'] #run-face .gf-crumbs rect {
+  rx: 0;
+}
+
+/* hop: updates */
+#runner[data-mood='hop'] #run-face .gf-head {
+  animation: hop 900ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* wait: peek up with a curious tilt */
+#runner[data-mood='wait'] #run-face .gf-head {
+  transform: translateY(-3px) rotate(7deg);
+}
+
+/* done: one happy hop, then rest */
+#runner[data-mood='done'] #run-face .gf-head {
+  animation: hop 700ms cubic-bezier(0.45, 0, 0.55, 1) 1;
+}
+
+#runner[data-mood='done'] #run-face .gf-x {
+  animation: twirl 700ms var(--ease-out) 1;
+}
+
+/* sad: sink a little into the dirt */
+#runner[data-mood='sad'] #run-face .gf-head {
+  transform: translateY(6px);
+  transition-duration: 600ms;
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-4deg);
+  }
+  to {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes sniff {
+  0%,
+  40%,
+  100% {
+    transform: scale(1, 1);
+  }
+  10%,
+  30% {
+    transform: scale(1.14, 0.86);
+  }
+  20% {
+    transform: scale(0.94, 1.08);
+  }
+}
+
+@keyframes dig {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  45% {
+    transform: translateY(9px) rotate(-6deg) scale(1.03, 0.95);
+  }
+  70% {
+    transform: translateY(-2px) rotate(3deg);
+  }
+}
+
+@keyframes jitter {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-0.8px);
+  }
+  75% {
+    transform: translateX(0.8px);
+  }
+}
+
+@keyframes shove {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+  40%,
+  55% {
+    transform: translateX(5px) rotate(7deg);
+  }
+}
+
+@keyframes twirl {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes stretch {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-3px) scale(0.97, 1.05);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  30% {
+    transform: translateY(-8px) scale(0.97, 1.04);
+  }
+  55% {
+    transform: translateY(1px) scale(1.05, 0.94);
+  }
+  70% {
+    transform: translateY(0) scale(1, 1);
   }
 }
 

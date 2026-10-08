@@ -1,6 +1,31 @@
 // Runs engine commands in a hidden terminal and turns their screens into Grub UI.
 // The terminal is always fed, so "Watch Grub work" can show the full history.
 
+/* ---------- Grub's mood on the run screen ---------- */
+
+// Each chore gets its own move; prompts and endings override it for a moment.
+const MOODS = {
+  'clean-dry': 'sniff',
+  'optimize-dry': 'sniff',
+  clean: 'chomp',
+  tidy: 'chomp',
+  optimize: 'fluff',
+  purge: 'sniff', // scanning; switches to dig once the user confirms
+  installer: 'sniff', // scanning; switches to shred once the user confirms
+  uninstall: 'evict',
+  brew: 'hop',
+};
+
+function setMood(mood) {
+  $('#runner').dataset.mood = mood;
+}
+
+function workMood() {
+  if (!run) return 'sniff';
+  if (run.removing) return run.key === 'purge' ? 'dig' : 'shred';
+  return MOODS[run.key] || 'chomp';
+}
+
 /* ---------- ask sheet: confirmations, passwords, reviews ---------- */
 
 let askResolve = null;
@@ -22,6 +47,7 @@ function ask({ title, body, list, password, error, buttons }) {
     )
   );
   document.body.classList.add('ask-open');
+  if (run && !run.exited) setMood('wait');
   (password ? input : $('#ask-actions').lastChild).focus();
   return new Promise((r) => (askResolve = r));
 }
@@ -32,6 +58,7 @@ function closeAsk(value) {
   const pw = $('#ask-input').value;
   $('#ask-input').value = '';
   document.body.classList.remove('ask-open');
+  if (run && !run.exited && !run.picker) setMood(workMood());
   r?.(value === 'ok-password' ? { password: pw } : value);
 }
 
@@ -182,6 +209,7 @@ async function runTask(opts) {
   $('#run-body').replaceChildren();
   resetProgress();
   setRunActions([{ label: 'Stop', onclick: stopTask }]);
+  setMood(workMood());
   document.body.classList.add('is-running');
   if (opts.command === 'uninstall') appsLoaded = false;
   goToRun();
@@ -271,6 +299,7 @@ function onExit(code) {
   $('#run-activity').textContent =
     s.lines.join(' · ') || (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : 'Open "Watch Grub work" to see what happened.');
   document.body.classList.remove('is-running');
+  setMood(code === 0 || s.freed || s.found ? 'done' : 'sad');
   const next =
     run.key === 'clean-dry' && s.found
       ? { label: 'Chomp it', onclick: () => runTask({ command: 'clean' }) }
@@ -563,6 +592,7 @@ function readPicker() {
 async function drivePicker(id) {
   const isPurge = id === 'purge-pick';
   run.picker = true;
+  setMood('wait');
   $('#run-activity').textContent = 'Laying it all out…';
   await settle(150);
   // walk the list once to collect every row (long lists scroll)
@@ -611,6 +641,8 @@ async function drivePicker(id) {
     return;
   }
   run.picker = false;
+  run.removing = true;
+  setMood(workMood());
   syncRunner();
   $('#run-activity').textContent = isPurge ? 'Burying…' : 'Shredding…';
   send('\r');
