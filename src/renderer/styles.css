@@ -1647,7 +1647,52 @@ body.about-open .about {
 
 /* picker inside the run screen */
 .pick-list {
-  overflow: visible;
+  flex: none;
+  overflow: hidden;
+}
+
+.pick-row {
+  font: inherit;
+  color: inherit;
+}
+
+.pick-all {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.pick-all b {
+  font-weight: 600;
+}
+
+.pick-all-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pick-all:hover {
+    background: var(--surface-3);
+  }
+}
+
+.pick-box[aria-checked='mixed'] {
+  border-color: var(--rot);
+  background: var(--rot) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314110f' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") center / 14px no-repeat;
 }
 
 .pick-row {
@@ -1656,6 +1701,8 @@ body.about-open .about {
 }
 
 .pick-box {
+  display: inline-block;
+  flex: none;
   width: 20px;
   height: 20px;
   border: 2px solid var(--line-strong);
@@ -1952,15 +1999,15 @@ body.ask-open .scrim {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .brand:hover .gf-head {
+  :is(.brand, .face-hover):hover .gf-head {
     transform: translateY(-4px);
   }
-  .brand:hover .gf-x {
+  :is(.brand, .face-hover):hover .gf-x {
     transform: rotate(90deg);
   }
 }
 
-.brand:active .gf-head {
+:is(.brand, .face-hover):active .gf-head {
   transform: translateY(-1px) scale(1.04, 0.94);
   transition-duration: 120ms;
 }
@@ -2235,4 +2282,9 @@ body.ask-open .scrim {
     transition: none !important;
     animation: none !important;
   }
+}
+
+.about-face {
+  display: inline-grid;
+  cursor: default;
 }

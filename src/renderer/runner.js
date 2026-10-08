@@ -58,7 +58,7 @@ function closeAsk(value) {
   const pw = $('#ask-input').value;
   $('#ask-input').value = '';
   document.body.classList.remove('ask-open');
-  if (run && !run.exited && !run.picker) setMood(workMood());
+  if (run && !run.exited && !run.picker && !run.stopping) setMood(workMood());
   r?.(value === 'ok-password' ? { password: pw } : value);
 }
 
@@ -228,6 +228,11 @@ function runQuiet(opts) {
 }
 
 function stopTask() {
+  // freeze Grub straight away; the summary follows when the process exits
+  run.stopping = true;
+  setMood('sad');
+  setRunActions([{ label: 'Stopping…', onclick: () => {} }]);
+  $('#run-actions button').disabled = true;
   window.mole.session.kill();
 }
 
@@ -289,20 +294,25 @@ function onExit(code) {
     return;
   }
   if (document.body.classList.contains('ask-open')) closeAsk('cancel');
+  if ($('#run-body .pick-list')) $('#run-body').replaceChildren();
+  run.picker = false;
   parseNow();
   if (run.model) renderProgress(run.model);
   const s = summarize();
   const t = TASKS[run.key] || TASKS.clean;
-  $('#run-title').textContent = code === 0 || s.freed || s.found ? t.done(s, run.opts) : 'Grub stopped early.';
+  const ok = !run.stopping && (code === 0 || s.freed || s.found);
+  $('#run-title').textContent = run.stopping ? 'Stopped. Grub put its fork down.' : ok ? t.done(s, run.opts) : 'Grub stopped early.';
   const dry = run.key.endsWith('-dry');
   $('#run-activity').textContent =
-    s.lines.join(' · ') || (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : 'Open "Watch Grub work" to see what happened.');
+    (run.stopping && 'Anything already cleaned stays cleaned; nothing else was touched.') ||
+    s.lines.join(' · ') ||
+    (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : 'Open "Watch Grub work" to see what happened.');
   document.body.classList.remove('is-running');
-  setMood(code === 0 || s.freed || s.found ? 'done' : 'sad');
+  setMood(ok ? 'done' : 'sad');
   const next =
-    run.key === 'clean-dry' && s.found
+    !run.stopping && run.key === 'clean-dry' && s.found
       ? { label: 'Chomp it', onclick: () => runTask({ command: 'clean' }) }
-      : run.key === 'optimize-dry'
+      : !run.stopping && run.key === 'optimize-dry'
         ? { label: 'Freshen up', onclick: () => runTask({ command: 'optimize' }) }
         : null;
   const actions = next ? [{ label: 'Not now', onclick: closeRunner }, { ...next, primary: true }] : [{ label: 'Done', primary: true, onclick: closeRunner }];
@@ -665,39 +675,63 @@ function showPicker(items, isPurge) {
   return new Promise((resolve) => {
     const list = el('div', { class: 'list pick-list' });
     const go = el('button', { class: 'btn btn-primary' });
+    const allBox = el('span', { class: 'pick-box', 'aria-hidden': 'true' });
+    const allCount = el('span', { class: 'pick-all-count' });
+    const allRow = el(
+      'button',
+      { class: 'pick-all', role: 'checkbox', onclick: () => setAll(!rows.every((r) => r.on)) },
+      allBox,
+      el('b', {}, 'Select all'),
+      allCount
+    );
+    const boxes = [];
     const update = () => {
       const on = rows.filter((r) => r.on);
-      go.textContent = on.length ? `${isPurge ? 'Bury' : 'Shred'} ${on.length} · ${bytes(on.reduce((n, r) => n + r.bytes, 0))}` : 'Pick something';
+      const size = bytes(on.reduce((n, r) => n + r.bytes, 0));
+      go.textContent = on.length ? `${isPurge ? 'Bury' : 'Shred'} ${on.length} · ${size}` : 'Pick something';
       go.disabled = !on.length;
+      // tri-state: all, none, or some
+      const state = on.length === rows.length ? 'true' : on.length ? 'mixed' : 'false';
+      allRow.setAttribute('aria-checked', state);
+      allBox.setAttribute('aria-checked', state);
+      allCount.textContent = `${on.length} of ${rows.length} selected${on.length ? ` · ${size}` : ''}`;
+    };
+    const setAll = (target) => {
+      rows.forEach((r, i) => {
+        r.on = target;
+        boxes[i].setAttribute('aria-checked', String(target));
+      });
+      update();
     };
     list.append(
       ...rows.map((r, i) => {
-        const box = el('button', { class: 'pick-box', role: 'checkbox', 'aria-checked': String(r.on), 'aria-label': r.name });
-        const row = el(
-          'div',
-          { class: 'row pick-row', style: `--i:${Math.min(i, 20)}`, onclick: () => {
-            r.on = !r.on;
-            box.setAttribute('aria-checked', String(r.on));
-            update();
-          } },
+        const box = el('span', { class: 'pick-box', 'aria-hidden': 'true', 'aria-checked': String(r.on) });
+        boxes.push(box);
+        return el(
+          'button',
+          {
+            class: 'row pick-row',
+            role: 'checkbox',
+            'aria-checked': String(r.on),
+            style: `--i:${Math.min(i, 20)}`,
+            onclick: (ev) => {
+              r.on = !r.on;
+              box.setAttribute('aria-checked', String(r.on));
+              ev.currentTarget.setAttribute('aria-checked', String(r.on));
+              update();
+            },
+          },
           box,
           el('div', { class: 'row-name' }, r.name, r.tags.length ? el('span', { class: 'row-sub' }, r.tags.join(' · ')) : null),
           el('div', { class: 'row-size' }, r.size)
         );
-        return row;
       })
     );
-    const all = el('button', { class: 'btn btn-quiet', onclick: () => {
-      const target = !rows.every((r) => r.on);
-      rows.forEach((r) => (r.on = target));
-      list.querySelectorAll('.pick-box').forEach((b) => b.setAttribute('aria-checked', String(target)));
-      update();
-    } }, 'All / none');
     go.addEventListener('click', () => resolve(rows.map((r) => r.on)));
     update();
     resetProgress();
-    $('#run-body').replaceChildren(list);
-    $('#run-actions').replaceChildren(el('button', { class: 'btn btn-quiet', onclick: () => resolve(null) }, 'Cancel'), all, go);
+    $('#run-body').replaceChildren(allRow, list);
+    $('#run-actions').replaceChildren(el('button', { class: 'btn btn-quiet', onclick: () => resolve(null) }, 'Cancel'), go);
   });
 }
 

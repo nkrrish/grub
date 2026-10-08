@@ -134,6 +134,14 @@ function digging(text) {
   big.querySelector('clipPath').id = 'grub-hole-run';
   big.querySelector('[clip-path]').setAttribute('clip-path', 'url(#grub-hole-run)');
   $('#run-face-slot').append(big);
+
+  const about = $('#grub-face').cloneNode(true);
+  about.id = 'about-face';
+  about.setAttribute('width', '64');
+  about.setAttribute('height', '64');
+  about.querySelector('clipPath').id = 'grub-hole-about';
+  about.querySelector('[clip-path]').setAttribute('clip-path', 'url(#grub-hole-about)');
+  $('#about-face-slot').append(about);
 }
 
 // Blinks at random intervals (sometimes twice) so the idle face never feels like a loop.
