@@ -1,0 +1,84 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "solid" : "display-p3:0.15310,0.12866,0.11364,1.00000"
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "solid" : "display-p3:0.15310,0.12866,0.11364,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "display-p3:0.15310,0.12866,0.11364,1.00000"
+              }
+            }
+          ],
+          "image-name" : "1-soil.svg",
+          "name" : "1-soil"
+        }
+      ],
+      "position" : {
+        "scale" : 1.7,
+        "translation-in-points" : [
+          0,
+          531.859375
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "none"
+            }
+          ],
+          "image-name" : "2-grub.svg",
+          "name" : "2-grub"
+        }
+      ],
+      "name" : "Group",
+      "position" : {
+        "scale" : 1.62,
+        "translation-in-points" : [
+          0,
+          4.1796875
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
