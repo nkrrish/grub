@@ -1,8 +1,8 @@
 # Grub
 
-It eats your junk. A free desktop face for the [Mole](https://github.com/tw93/Mole) Mac cleanup CLI.
+It eats your junk. Grub is a free, open-source Mac cleaner: a live health dashboard, a disk map you can dig through, guided cleanups, full app uninstalls, startup-item control, app updates and menu bar stats, all in one place. Its cleaning runs on the open-source [Mole](https://github.com/tw93/Mole) engine.
 
-Grub is an unofficial wrapper. It runs the `mo` command you already have installed and does not contain any of Mole's code. For the official app, see [mole.fit](https://mole.fit).
+Grub is an unofficial wrapper. It runs the `mo` command you already have installed and does not contain any of Mole's code. For Mole's official app, see [mole.fit](https://mole.fit).
 
 ## Run
 

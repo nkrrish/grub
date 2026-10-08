@@ -233,7 +233,10 @@ async function dig(target, fromTile) {
   renderCrumbs();
   $('#dig-total').textContent = '';
   const list = $('#dig-list');
+  // a new dig (say, back via the breadcrumb) abandons any zoom still waiting on its folder
+  digState.zoom?.cancel();
   const zoom = fromTile && digState.layout === 'map' ? zoomInto(fromTile, target) : null;
+  digState.zoom = zoom;
   let res = digState.cache.get(target);
   if (!res) {
     if (!zoom) {
@@ -244,9 +247,11 @@ async function dig(target, fromTile) {
     if (res.ok) digState.cache.set(target, res);
   }
   if (zoom) await zoom.grown;
-  if (digState.path !== target) return zoom?.layer.remove();
+  if (digState.zoom !== zoom) return; // superseded; the newer dig already cleaned up
+  digState.zoom = null;
+  if (digState.path !== target) return;
   if (!res.ok) {
-    zoom?.layer.remove();
+    zoom?.cancel();
     return list.replaceChildren(el('div', { class: 'empty' }, 'Grub hit a rock: ' + res.error));
   }
   digState.entries = (res.data.entries || []).filter((e) => e.size > 0).slice(0, 80);
@@ -278,6 +283,10 @@ function zoomInto(tile, target) {
     : layer.animate([{ clipPath: from }, { clipPath: to }], { duration: 420, easing: EASE_IN_OUT, fill: 'forwards' });
   return {
     layer,
+    cancel() {
+      layer.remove();
+      map.classList.remove('is-zooming');
+    },
     // never wait on the animation forever (a hidden window can pause it)
     grown: Promise.race([grow.finished.catch(() => {}), new Promise((r) => setTimeout(r, 700))]),
     reveal() {
