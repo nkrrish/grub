@@ -13,7 +13,22 @@
     <div class="app">
       <aside class="sidebar">
         <div class="brand">
-          <img src="../../brand/mark.svg" alt="" width="34" height="34" />
+          <svg class="grub-face" id="grub-face" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
+            <defs><clipPath id="grub-hole"><rect x="0" y="0" width="64" height="53" /></clipPath></defs>
+            <g clip-path="url(#grub-hole)">
+              <g class="gf-head">
+                <path d="M13 56V37C13 25.4 21.5 16 32 16s19 9.4 19 21v19z" fill="#B8E34D" />
+                <circle class="gf-eye" cx="24.5" cy="33" r="2.7" fill="#14110F" />
+                <path class="gf-x" d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round" />
+                <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0" />
+                <g class="gf-teeth">
+                  <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4" />
+                  <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4" />
+                </g>
+              </g>
+            </g>
+            <path d="M4 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 12 0v8H4z" fill="#5B4636" />
+          </svg>
           <div>
             <div class="brand-name">Grub</div>
             <div class="brand-sub">it eats your junk</div>

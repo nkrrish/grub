@@ -124,6 +124,26 @@ function digging(text) {
   );
 }
 
+/* ---------- Grub's face ---------- */
+
+// Blinks at random intervals (sometimes twice) so the idle face never feels like a loop.
+(function blinkLoop() {
+  const face = $('#grub-face');
+  const blink = (then) => {
+    face.classList.add('is-blinking');
+    setTimeout(() => {
+      face.classList.remove('is-blinking');
+      then?.();
+    }, 140);
+  };
+  const schedule = () =>
+    setTimeout(() => {
+      if (!REDUCED_MOTION.matches && !document.hidden) Math.random() < 0.25 ? blink(() => setTimeout(blink, 120)) : blink();
+      schedule();
+    }, 3500 + Math.random() * 4500);
+  schedule();
+})();
+
 /* ---------- navigation ---------- */
 
 let currentChore = 'clean';
