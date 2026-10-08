@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('mole', {
     openAutomationSettings: () => ipcRenderer.invoke('perm:open', 'automation'),
   },
   updates: (fresh) => ipcRenderer.invoke('updates:list', fresh),
+  ai: {
+    scan: () => ipcRenderer.invoke('ai:scan'),
+    clean: (ids) => ipcRenderer.invoke('ai:clean', ids),
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (patch) => ipcRenderer.invoke('settings:set', patch),

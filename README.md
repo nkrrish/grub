@@ -20,6 +20,7 @@ npm start
 - The menu bar shows CPU and free disk space, and has a popover with live stats and quick actions. Closing the window keeps it running there; quit from the popover.
 - Tidy up runs `mo clean` and then `mo optimize` in one go.
 - Startup items lists login items (via System Events) and launch agents. Your own agents can be switched off with `launchctl`; system ones open in Finder.
+- AI tools finds what Claude Code, Codex, Cursor and OpenCode leave behind: old versions, caches and logs (ticked), old or orphaned sessions (you pick each; retention per tool), finished Claude Code worktrees (clean ones only, removed with `git worktree remove`) and an oversized OpenCode database to compact. Mole has no command for this, so Grub does it itself. Nothing used in the last day is listed, files go to the Trash, and Codex sessions are deleted with Codex's own `codex delete` after a copy goes to the Trash. It only appears in the sidebar when there's AI tool data, and can be hidden in About.
 - Updates lists outdated Homebrew apps and tools (`brew outdated`) and upgrades them in the terminal.
 
 ## License

@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const pty = require('node-pty');
+const aiTools = require('./aitools');
 
 // Apps launched from Finder get a bare PATH, so look for Homebrew's tools directly.
 const PATH_EXTRA = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -330,6 +331,8 @@ const DEFAULTS = {
   lastMoleUpdate: 0,
   menuBarText: true,
   menuSections: ['cpu', 'memory', 'disk', 'network', 'battery', 'apps', 'actions'],
+  aiCare: true, // show AI tools cleanup when there's something to clean
+  aiRetention: aiTools.DEFAULT_RETENTION,
 };
 
 function readSettings() {
@@ -501,6 +504,8 @@ ipcMain.handle('app:icon', async (_e, p) => {
   }
   return iconCache.get(p);
 });
+ipcMain.handle('ai:scan', () => aiTools.scan(readSettings()));
+ipcMain.handle('ai:clean', (_e, ids) => (Array.isArray(ids) ? aiTools.clean(ids.filter((i) => typeof i === 'string')) : { ok: false }));
 ipcMain.handle('startup:list', listStartup);
 ipcMain.handle('startup:toggle', (_e, a) => toggleAgent(a));
 ipcMain.handle('startup:removeLogin', (_e, name) => removeLoginItem(name));
