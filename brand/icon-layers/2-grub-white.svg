@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="303 326 418 440" width="418" height="440">
+  <!-- Grub with a white body, for Icon Composer to fill or tint. Face keeps its colours. On the 1024 icon canvas this box sits at x 303, y 326. -->
+  <g transform="translate(160 150) scale(11)">
+    <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#FFFFFF"/>
+    <circle cx="24.5" cy="33" r="2.7" fill="#14110F"/>
+    <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
+    <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+    <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+  </g>
+</svg>

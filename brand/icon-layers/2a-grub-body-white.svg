@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="303 326 418 440" width="418" height="440">
+  <!-- White Grub body, no face. Pair with 2b-grub-face.svg. On the 1024 icon canvas this box sits at x 303, y 326. -->
+  <g transform="translate(160 150) scale(11)">
+    <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#FFFFFF"/>
+  </g>
+</svg>
