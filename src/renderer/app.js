@@ -224,22 +224,67 @@ try {
 } catch {}
 const digState = { home: '', path: '', loaded: false, cache: new Map(), entries: [], layout: savedLayout };
 
-async function dig(target) {
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
+const EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
+
+async function dig(target, fromTile) {
   digState.loaded = true;
   digState.path = target;
   renderCrumbs();
+  $('#dig-total').textContent = '';
   const list = $('#dig-list');
+  const zoom = fromTile && digState.layout === 'map' ? zoomInto(fromTile, target) : null;
   let res = digState.cache.get(target);
   if (!res) {
-    $('#dig-map').replaceChildren();
-    list.replaceChildren(digging('Tunnelling through ' + target.replace(digState.home, '~') + '…'));
+    if (!zoom) {
+      $('#dig-map').replaceChildren();
+      list.replaceChildren(digging('Tunnelling through ' + target.replace(digState.home, '~') + '…'));
+    }
     res = await window.mole.analyze(target);
     if (res.ok) digState.cache.set(target, res);
   }
-  if (digState.path !== target) return;
-  if (!res.ok) return list.replaceChildren(el('div', { class: 'empty' }, 'Grub hit a rock: ' + res.error));
+  if (zoom) await zoom.grown;
+  if (digState.path !== target) return zoom?.layer.remove();
+  if (!res.ok) {
+    zoom?.layer.remove();
+    return list.replaceChildren(el('div', { class: 'empty' }, 'Grub hit a rock: ' + res.error));
+  }
   digState.entries = (res.data.entries || []).filter((e) => e.size > 0).slice(0, 80);
   renderDig();
+  zoom?.reveal();
+}
+
+// The clicked tile grows to fill the map (clip-path only), then dissolves to show what's inside.
+function zoomInto(tile, target) {
+  const map = $('#dig-map');
+  const m = map.getBoundingClientRect();
+  const t = tile.getBoundingClientRect();
+  const from = `inset(${t.top - m.top}px ${m.right - t.right}px ${m.bottom - t.bottom}px ${t.left - m.left}px round 12px)`;
+  const to = 'inset(3px 3px 3px 3px round 12px)';
+  const layer = el(
+    'div',
+    { class: `dig-zoom ${[...tile.classList].find((c) => c.startsWith('t-')) || ''}`, 'aria-hidden': 'true' },
+    el('div', { class: 'dig-zoom-label' }, el('span', { class: 'dig-zoom-dot' }), 'Tunnelling into ', el('b', {}, target.split('/').pop()), '…')
+  );
+  map.append(layer);
+  map.classList.add('is-zooming');
+  const reduce = REDUCED_MOTION.matches;
+  for (const other of map.querySelectorAll('.tile')) other.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+  const grow = reduce
+    ? layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out', fill: 'forwards' })
+    : layer.animate([{ clipPath: from }, { clipPath: to }], { duration: 420, easing: EASE_IN_OUT, fill: 'forwards' });
+  return {
+    layer,
+    grown: grow.finished.catch(() => {}),
+    reveal() {
+      map.classList.remove('is-zooming');
+      // re-rendering replaced the map's children; put the full-size layer back on top, then dissolve it
+      layer.style.clipPath = to;
+      layer.classList.add('is-revealing');
+      map.append(layer);
+      layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-out', fill: 'forwards' }).finished.then(() => layer.remove());
+    },
+  };
 }
 
 function renderDig() {
@@ -369,7 +414,10 @@ function renderMap(map, entries) {
           style: `left:${x + GAP}px;top:${y + GAP}px;width:${tw}px;height:${th}px;--i:${Math.min(i, 24)};--size-font:${sizeFont}px`,
           title: `${e.name} · ${bytes(e.size)} · ${(share * 100).toFixed(1)}%`,
           'aria-label': `${e.name}, ${bytes(e.size)}. ${hint}`,
-          onclick: () => (e.crumbs ? setLayout('list') : e.is_dir ? dig(e.path) : window.mole.reveal(e.path)),
+          onclick: (ev) => {
+            if (map.classList.contains('is-zooming')) return;
+            e.crumbs ? setLayout('list') : e.is_dir ? dig(e.path, ev.currentTarget) : window.mole.reveal(e.path);
+          },
         },
         el('span', { class: 'tile-top' }, icon(e.crumbs ? ICON_TILE_CRUMBS : e.is_dir ? ICON_TILE_DIR : ICON_TILE_FILE), el('b', {}, e.name)),
         el(
