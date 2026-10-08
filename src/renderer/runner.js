@@ -246,7 +246,6 @@ function syncRunner() {
   const live = run && !run.quiet && !run.dismissed;
   const home = live && isRunHome(current.view, current.chore);
   $('#runner').hidden = !home;
-  document.body.classList.toggle('run-visible', !!home);
   $$('.nav-item').forEach((b) => b.classList.remove('is-busy'));
   if (live && !run.exited) {
     const { view, chore } = run.origin;

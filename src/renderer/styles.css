@@ -1965,37 +1965,10 @@ body.ask-open .scrim {
   transition-duration: 120ms;
 }
 
-/* chomping while a chore runs: head dips into the dirt, teeth clack, crumbs fly */
 .grub-face .gf-crumbs rect {
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-head {
-  animation: chomp 620ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-teeth {
-  animation: clack 155ms ease-in-out infinite alternate;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-crumbs rect {
-  animation: fling 620ms var(--ease-out) infinite;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(1) {
-  --dx: -10px;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(2) {
-  --dx: 10px;
-  animation-delay: 210ms;
-}
-
-body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(3) {
-  --dx: -16px;
-  animation-delay: 410ms;
 }
 
 @keyframes chomp {
