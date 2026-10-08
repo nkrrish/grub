@@ -121,12 +121,19 @@ function ensureTerm() {
     term.write(d, scheduleParse);
   });
   window.mole.session.onExit(onExit);
-  new ResizeObserver(() => {
-    if (!document.body.classList.contains('drawer-open')) return;
-    fit.fit();
-    window.mole.session.resize({ cols: term.cols, rows: term.rows });
-  }).observe($('#term'));
+  new ResizeObserver(refit).observe($('#term'));
+  // the terminal font loads lazily; row height grows when it lands, so measure again
+  document.fonts.addEventListener('loadingdone', refit);
 }
+
+function refit() {
+  if (!term || !document.body.classList.contains('drawer-open')) return;
+  fit.fit();
+  window.mole.session.resize({ cols: term.cols, rows: term.rows });
+}
+
+// fetch the terminal font up front so the first measurement uses the real glyphs
+document.fonts.load("13px 'JetBrains Mono'").catch(() => {});
 
 function bufferLines(buf = term.buffer.active) {
   const out = [];
@@ -490,7 +497,7 @@ const PROMPTS = [
   { id: 'proceed', re: /Proceed with uninstallation\? \[y\/N\]/ },
   { id: 'app-ok', re: /Remove \d+ app\(s\).*confirm/ },
   // any other yes/no question, e.g. Homebrew's "Do you want to proceed with the upgrade? [y/n]"
-  { id: 'yn', re: /^(?!.*Proceed with uninstallation).*\[[yY]\/[nN]\]:?\s*$/ },
+  { id: 'yn', re: /^(?!.*Proceed with uninstallation).*[[(](?:[yY](?:es)?)\/(?:[nN]o?)[\])]:?\s*$/ },
   { id: 'creds', re: /Enter your credentials:/ },
 ];
 
@@ -544,7 +551,8 @@ async function respond(id, lines) {
       send(v === 'ok' ? '\r' : ' ');
     } else if (id === 'yn') {
       const line = lines.map((l) => l.trim()).filter((l) => PROMPTS.find((p) => p.id === 'yn').re.test(l)).at(-1) || '';
-      const question = line.replace(/^==>\s*/, '').replace(/\s*\[[yY]\/[nN]\]:?\s*$/, '');
+      const question = line.replace(/^==>\s*/, '').replace(/\s*[[(][^\])]*[\])]:?\s*$/, '');
+      const wordy = /[[(]yes\/no[\])]/i.test(line); // [yes/no] wants the whole word
       const v = await ask({
         title: question.endsWith('?') ? question : question + '?',
         body: run.key === 'brew' ? 'Homebrew is asking before it changes anything.' : 'The engine is asking before it continues.',
@@ -553,7 +561,7 @@ async function respond(id, lines) {
           { label: 'Yes', value: 'yes', primary: true },
         ],
       });
-      send(v === 'yes' ? 'y\r' : 'n\r');
+      send(v === 'yes' ? (wordy ? 'yes\r' : 'y\r') : wordy ? 'no\r' : 'n\r');
     } else if (id === 'purge-ok' || id === 'inst-ok') send('\r');
     else if (id === 'proceed') send('y\r');
     else if (id === 'app-ok') {
@@ -754,11 +762,12 @@ function showPicker(items, isPurge) {
 $('#run-watch').addEventListener('click', () => {
   ensureTerm();
   document.body.classList.add('drawer-open');
-  setTimeout(() => {
-    fit.fit();
-    window.mole.session.resize({ cols: term.cols, rows: term.rows });
-    term.scrollToBottom();
-  }, 60);
+  document.fonts.ready.then(() =>
+    setTimeout(() => {
+      refit();
+      term.scrollToBottom();
+    }, 60)
+  );
 });
 
 $('#drawer-close').addEventListener('click', () => document.body.classList.remove('drawer-open'));
