@@ -9,9 +9,9 @@ const SECTIONS = [
   ['gpu', 'Graphics', 'The graphics chip'],
   ['heat', 'Heat & fan', 'Temperature, fan and power use'],
   ['battery', 'Battery', 'Charge, health and charger'],
-  ['apps', 'Hungriest apps', 'What’s using your Mac the most'],
   ['gadgets', 'Gadgets', 'Bluetooth devices and their batteries'],
   ['actions', 'Quick chores', 'Tidy up, sniff for junk, disk map'],
+  ['apps', 'Hungriest apps', 'What’s using your Mac the most'],
 ];
 
 let settings = { menuSections: SECTIONS.map(([k]) => k), menuBarText: true };

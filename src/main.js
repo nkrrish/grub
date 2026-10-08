@@ -93,6 +93,8 @@ const FRIENDLY = {
   cloudd: 'iCloud sync',
   bird: 'iCloud Drive',
   cloudphotod: 'iCloud Photos',
+  coreduetd: 'Siri suggestions',
+  ANECompilerService: 'Apple Intelligence',
   photolibraryd: 'Photos library',
   mds: 'Spotlight search',
   mds_stores: 'Spotlight search',

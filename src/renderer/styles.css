@@ -475,6 +475,10 @@ h1 {
   color: var(--muted);
 }
 
+.proc-mem span {
+  min-width: 64px;
+}
+
 .proc-mem i {
   width: 90px;
   height: 6px;
