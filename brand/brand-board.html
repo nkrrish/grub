@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Grub Brand</title>
+    <link rel="stylesheet" href="../node_modules/@fontsource-variable/fredoka/index.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/400.css" />
+    <style>
+      :root {
+        --bg: #0b0908;
+        --panel: #17130f;
+        --panel-2: #201b17;
+        --text: #f3ede4;
+        --muted: #a89d90;
+        --rot: #b8e34d;
+        --nose: #f4a7b0;
+        --soil: #5b4636;
+        --display: 'Fredoka Variable', sans-serif;
+        --mono: 'JetBrains Mono', monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 1000px;
+        padding: 28px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, system-ui, sans-serif;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr 1fr;
+        grid-template-rows: repeat(3, 1fr);
+        gap: 16px;
+        height: 100%;
+      }
+      .p {
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: var(--panel);
+        padding: 26px;
+      }
+      .label {
+        position: absolute;
+        left: 22px;
+        bottom: 16px;
+        color: var(--muted);
+        font: 11px var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .num {
+        position: absolute;
+        right: 22px;
+        bottom: 16px;
+        color: #5e554c;
+        font: 11px var(--mono);
+      }
+
+      /* 1 cover */
+      .cover {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 36px;
+        background: radial-gradient(circle at 80% 10%, rgba(184, 227, 77, 0.12), transparent 55%), var(--panel);
+      }
+      .cover h1 {
+        margin: 0;
+        font: 600 64px/0.9 var(--display);
+        letter-spacing: -0.035em;
+      }
+      .cover h1 span { color: var(--rot); }
+      .cover p { margin: 0; color: var(--muted); font-size: 14px; max-width: 360px; }
+
+      /* 2 construction */
+      .construct { display: grid; place-items: center; background: var(--panel-2); }
+      .construct svg { width: 230px; }
+
+      /* 3 digital */
+      .digital { padding: 22px; background: #0f0d0b; }
+      .chrome {
+        display: flex; gap: 6px; padding: 10px 12px; border-radius: 10px 10px 0 0; background: #1c1815;
+      }
+      .chrome i { width: 10px; height: 10px; border-radius: 50%; background: #3a322b; }
+      .term {
+        padding: 16px; border-radius: 0 0 10px 10px; background: #14110f;
+        font: 13px/1.7 var(--mono); color: var(--muted);
+      }
+      .term b { color: var(--rot); font-weight: 400; }
+      .term em { color: var(--nose); font-style: normal; }
+
+      /* 4 tagline */
+      .tag { display: flex; align-items: center; background: var(--rot); color: #14110f; }
+      .tag h2 { margin: 0; font: 600 54px/0.95 var(--display); letter-spacing: -0.03em; }
+      .tag .label, .tag .num { color: rgba(20, 17, 15, 0.6); }
+
+      /* 5 colors */
+      .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 22px 22px 46px; }
+      .sw { border-radius: 10px; display: flex; align-items: flex-end; padding: 10px; font: 11px var(--mono); }
+
+      /* 6 type */
+      .type { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+      .type .aa { font: 600 84px/1 var(--display); letter-spacing: -0.03em; }
+      .type .row { color: var(--muted); font: 15px var(--mono); }
+
+      /* 7 physical: sticker */
+      .physical { display: grid; place-items: center; background: #2b231d; }
+      .sticker {
+        display: flex; align-items: center; gap: 12px; padding: 16px 24px 16px 16px;
+        border-radius: 999px; background: var(--text); color: #14110f;
+        font: 600 26px var(--display); transform: rotate(-6deg);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      }
+      .sticker img { width: 54px; height: 54px; border-radius: 50%; background: #14110f; padding: 4px; }
+
+      /* 8 image direction: halftone soil */
+      .image {
+        background:
+          radial-gradient(circle, rgba(184, 227, 77, 0.55) 1.3px, transparent 1.6px) 0 0 / 9px 9px,
+          linear-gradient(to bottom, #14110f 0%, #2b231d 55%, #5b4636 100%);
+        -webkit-mask-image: none;
+      }
+      .image::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, var(--panel) 15%, transparent 70%);
+      }
+      .image .mole { position: absolute; left: 50%; bottom: 0; width: 170px; transform: translateX(-50%); z-index: 1; }
+      .image .label, .image .num { z-index: 2; }
+
+      /* 9 system detail */
+      .detail { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chip { padding: 8px 14px; border-radius: 10px; background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 13px; }
+      .chip.on { background: rgba(184, 227, 77, 0.14); color: var(--rot); }
+      .btn { align-self: flex-start; padding: 12px 20px; border-radius: 12px; background: var(--rot); color: #14110f; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <div class="board">
+      <section class="p cover">
+        <img src="mark.svg" width="72" height="72" alt="" />
+        <h1>Grub<span>.</span></h1>
+        <p>A free, slightly unhinged face for the Mole cleanup CLI. It eats your junk.</p>
+        <span class="label">Grub · Identity v0.1</span><span class="num">01</span>
+      </section>
+
+      <section class="p construct">
+        <svg viewBox="0 0 64 64" fill="none">
+          <g stroke="#5e554c" stroke-width=".25" stroke-dasharray="1 1">
+            <circle cx="32" cy="37" r="19" />
+            <line x1="32" y1="8" x2="32" y2="60" />
+            <line x1="4" y1="37" x2="60" y2="37" />
+            <line x1="4" y1="52" x2="60" y2="52" />
+            <circle cx="24.5" cy="33" r="6" />
+            <circle cx="39.8" cy="33" r="6" />
+          </g>
+          <path d="M13 52V37C13 25.4 21.5 16 32 16s19 9.4 19 21v15z" stroke="#b8e34d" stroke-width=".6" />
+          <circle cx="24.5" cy="33" r="2.7" fill="#b8e34d" />
+          <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#b8e34d" stroke-width="1.4" stroke-linecap="round" />
+          <ellipse cx="32" cy="41" rx="5.4" ry="3.8" stroke="#f4a7b0" stroke-width=".6" />
+        </svg>
+        <span class="label">Dome + one rotten eye</span><span class="num">02</span>
+      </section>
+
+      <section class="p digital">
+        <div class="chrome"><i></i><i></i><i></i></div>
+        <div class="term">
+          <div>$ <b>mo clean --dry-run</b></div>
+          <div>▸ User caches <em>3.2 GB</em></div>
+          <div>▸ Old logs <em>812 MB</em></div>
+          <div>▸ Xcode leftovers <em>5.7 GB</em></div>
+          <div><b>✓ 9.7 GB ready to chomp</b></div>
+        </div>
+        <span class="label">Command surface</span><span class="num">03</span>
+      </section>
+
+      <section class="p tag">
+        <h2>It eats<br />your junk.</h2>
+        <span class="label">Tagline</span><span class="num">04</span>
+      </section>
+
+      <section class="p colors">
+        <div class="sw" style="background: #b8e34d; color: #14110f">Mold<br />#B8E34D</div>
+        <div class="sw" style="background: #f4a7b0; color: #14110f">Snout<br />#F4A7B0</div>
+        <div class="sw" style="background: #5b4636">Soil<br />#5B4636</div>
+        <div class="sw" style="background: #14110f; border: 1px solid #2f2924">Burrow<br />#14110F</div>
+        <span class="label">Palette</span><span class="num">05</span>
+      </section>
+
+      <section class="p type">
+        <div class="aa">Aa Chomp</div>
+        <div class="row">Fredoka · display</div>
+        <div class="row">SF Pro · interface</div>
+        <div class="row">JetBrains Mono · terminal</div>
+        <span class="label">Type</span><span class="num">06</span>
+      </section>
+
+      <section class="p physical">
+        <div class="sticker"><img src="mark.svg" alt="" />Feed me caches</div>
+        <span class="label">Laptop sticker</span><span class="num">07</span>
+      </section>
+
+      <section class="p image">
+        <img class="mole" src="mark.svg" alt="" />
+        <span class="label">Image direction · halftone soil</span><span class="num">08</span>
+      </section>
+
+      <section class="p detail">
+        <div class="chips">
+          <span class="chip on">Status</span><span class="chip">Disk</span><span class="chip">Clean</span><span class="chip">Uninstall</span>
+        </div>
+        <div class="btn">Chomp the junk</div>
+        <span class="label">System detail</span><span class="num">09</span>
+      </section>
+    </div>
+  </body>
+</html>

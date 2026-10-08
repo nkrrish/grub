@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'" />
+    <title>Grub</title>
+    <link rel="stylesheet" href="../../node_modules/@fontsource-variable/fredoka/index.css" />
+    <link rel="stylesheet" href="tray.css" />
+  </head>
+  <body>
+    <div class="pop">
+      <header class="head">
+        <img src="../../brand/mark.svg" alt="" width="30" height="30" />
+        <div class="head-text">
+          <div class="title" id="t-title">Sniffing…</div>
+          <div class="sub" id="t-sub">&nbsp;</div>
+        </div>
+        <div class="score" id="t-score">--</div>
+      </header>
+
+      <div class="meters">
+        <div class="meter">
+          <div class="meter-top"><span>Disk</span><b id="t-disk">--</b></div>
+          <div class="bar"><i id="t-disk-bar"></i></div>
+        </div>
+        <div class="meter">
+          <div class="meter-top"><span>CPU</span><b id="t-cpu">--</b></div>
+          <div class="bar"><i id="t-cpu-bar"></i></div>
+        </div>
+        <div class="meter">
+          <div class="meter-top"><span>Memory</span><b id="t-mem">--</b></div>
+          <div class="bar"><i class="pink" id="t-mem-bar"></i></div>
+        </div>
+        <div class="meter-row">
+          <div><span>Battery</span><b id="t-bat">--</b></div>
+          <div><span>Network</span><b id="t-net">--</b></div>
+          <div><span>Up</span><b id="t-up">--</b></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="act act-primary" data-run="tidy">
+          <span>Tidy up</span><small>clean, then optimize</small>
+        </button>
+        <button class="act" data-run="clean-dry"><span>Sniff for junk</span><small>dry run</small></button>
+        <button class="act" data-open="dig"><span>Disk map</span><small>what's big</small></button>
+      </div>
+
+      <footer class="foot">
+        <button data-open="burrow">Open Grub</button>
+        <button id="t-quit">Quit</button>
+      </footer>
+    </div>
+    <script src="tray.js"></script>
+  </body>
+</html>

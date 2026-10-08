@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'" />
+    <title>Grub</title>
+    <link rel="stylesheet" href="../../node_modules/@fontsource-variable/fredoka/index.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/400.css" />
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="../../brand/mark.svg" alt="" width="34" height="34" />
+          <div>
+            <div class="brand-name">Grub</div>
+            <div class="brand-sub">it eats your junk</div>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Sections">
+          <button class="nav-item is-active" data-view="burrow">
+            <svg viewBox="0 0 24 24"><path d="M4 18a8 8 0 0 1 16 0" /><path d="M12 18l4-5" /></svg>
+            <span>Status</span>
+          </button>
+          <button class="nav-item" data-view="dig">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 4v8l6 4" /></svg>
+            <span>Disk</span>
+          </button>
+          <div class="nav-label">Chores</div>
+          <button class="nav-item" data-view="chores" data-chore="clean">
+            <svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" /><path d="M9 8V5h6v3" /></svg>
+            <span>Clean</span>
+          </button>
+          <button class="nav-item" data-view="evict">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M9 9l6 6m0-6l-6 6" /></svg>
+            <span>Uninstall</span>
+          </button>
+          <button class="nav-item" data-view="chores" data-chore="optimize">
+            <svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z" /></svg>
+            <span>Optimize</span>
+          </button>
+          <button class="nav-item" data-view="chores" data-chore="purge">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" /></svg>
+            <span>Purge projects</span>
+          </button>
+          <button class="nav-item" data-view="chores" data-chore="installer">
+            <svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z" /><path d="M4 8l8 4 8-4M12 12v8" /></svg>
+            <span>Installers</span>
+          </button>
+          <div class="nav-label">Mac care</div>
+          <button class="nav-item" data-view="startup">
+            <svg viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.3 7.3a8 8 0 1 0 11.4 0" /></svg>
+            <span>Startup items</span>
+          </button>
+          <button class="nav-item" data-view="updates">
+            <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+            <span>Updates</span>
+          </button>
+          <div class="nav-label">Evidence</div>
+          <button class="nav-item" data-view="history">
+            <svg viewBox="0 0 24 24"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="8" /></svg>
+            <span>History</span>
+          </button>
+        </nav>
+
+        <button class="run-chip" id="run-chip" hidden aria-live="polite">
+          <span class="run-chip-dot" aria-hidden="true"></span>
+          <span class="run-chip-text" id="run-chip-text"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+        <button class="sidebar-foot" id="about-open" aria-label="About Grub and its engine">
+          <span class="dot" id="mole-dot"></span>
+          <span id="mole-version">Looking for Mole…</span>
+        </button>
+      </aside>
+
+      <main class="main">
+        <!-- STATUS -->
+        <section class="view is-active" id="view-burrow">
+          <header class="view-head">
+            <p class="eyebrow">Status</p>
+            <h1 id="burrow-title">Sniffing around…</h1>
+            <p class="lede" id="burrow-lede">Reading your Mac's vitals. Hold your nose.</p>
+          </header>
+
+          <div class="grid">
+            <div class="card card-health">
+              <div class="ring" id="health-ring" style="--p: 0">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="ring-track" cx="60" cy="60" r="52" />
+                  <circle class="ring-fill" cx="60" cy="60" r="52" pathLength="100" />
+                </svg>
+                <div class="ring-label">
+                  <strong id="health-score">--</strong>
+                  <span>health</span>
+                </div>
+              </div>
+              <p class="health-msg" id="health-msg">&nbsp;</p>
+            </div>
+
+            <div class="card card-disk">
+              <div class="card-title">Disk</div>
+              <div class="big"><span id="disk-free">--</span> <small>free</small></div>
+              <div class="bar"><div class="bar-fill" id="disk-bar"></div></div>
+              <p class="note" id="disk-note">&nbsp;</p>
+              <div class="btn-row">
+                <button class="btn btn-primary" id="tidy-btn">Tidy up</button>
+                <button class="btn btn-quiet" data-goto="chores" data-chore="clean">Just clean</button>
+                <span class="btn-row-note">Tidy up cleans, then optimizes. You review everything before it goes.</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">CPU</div>
+              <div class="big"><span id="cpu-use">--</span><small>%</small></div>
+              <div class="cores" id="cpu-cores"></div>
+              <p class="note" id="cpu-note">&nbsp;</p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Memory</div>
+              <div class="big"><span id="mem-use">--</span><small>%</small></div>
+              <div class="bar"><div class="bar-fill bar-pink" id="mem-bar"></div></div>
+              <p class="note" id="mem-note">&nbsp;</p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Battery</div>
+              <div class="big"><span id="bat-pct">--</span><small>%</small></div>
+              <p class="note" id="bat-note">&nbsp;</p>
+            </div>
+
+            <div class="card card-machine">
+              <div class="card-title">Machine</div>
+              <dl class="facts" id="machine-facts"></dl>
+            </div>
+          </div>
+        </section>
+
+        <!-- DISK -->
+        <section class="view" id="view-dig">
+          <header class="view-head">
+            <p class="eyebrow">Disk</p>
+            <h1>Where did all the space go?</h1>
+            <p class="lede">Grub tunnels through a folder and ranks what's inside. Click a folder to dig deeper.</p>
+          </header>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="crumbs" id="dig-crumbs"></div>
+              <span class="dig-total" id="dig-total"></span>
+            </div>
+            <div class="seg" role="tablist" aria-label="Disk layout">
+              <button role="tab" data-layout="map">Map</button>
+              <button role="tab" data-layout="list">List</button>
+            </div>
+          </div>
+          <div class="map" id="dig-map"></div>
+          <div class="list" id="dig-list"></div>
+        </section>
+
+        <!-- CHORES -->
+        <section class="view" id="view-chores">
+          <header class="view-head">
+            <p class="eyebrow" id="chore-eyebrow">Clean</p>
+            <h1 id="chore-title"></h1>
+            <p class="lede" id="chore-lede"></p>
+          </header>
+          <div class="chore">
+            <ul class="chore-points" id="chore-points"></ul>
+            <div class="chore-actions">
+              <button class="btn btn-quiet" id="chore-sniff">
+                <span>Sniff first</span><small>dry run, nothing deleted</small>
+              </button>
+              <button class="btn btn-primary" id="chore-chomp">
+                <span id="chore-chomp-label">Chomp</span><small id="chore-chomp-sub">for real</small>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- UNINSTALL -->
+        <section class="view" id="view-evict">
+          <header class="view-head">
+            <p class="eyebrow">Uninstall</p>
+            <h1>Evict an app, leftovers and all.</h1>
+            <p class="lede">Grub shows you every file before it goes. Everything lands in the Trash, so you can change your mind.</p>
+          </header>
+          <input class="search" id="evict-search" type="search" placeholder="Find an app" aria-label="Find an app" />
+          <div class="list" id="evict-list"></div>
+        </section>
+
+        <!-- HISTORY -->
+        <section class="view" id="view-history">
+          <header class="view-head">
+            <p class="eyebrow">History</p>
+            <h1 id="history-title">Grub's food diary.</h1>
+            <p class="lede">Every clean-up Grub has done on this Mac.</p>
+          </header>
+          <div class="list" id="history-list"></div>
+        </section>
+
+        <!-- STARTUP -->
+        <section class="view" id="view-startup">
+          <header class="view-head">
+            <p class="eyebrow">Startup items</p>
+            <h1>Who sneaks in when your Mac boots?</h1>
+            <p class="lede">Login items open with you. Launch agents run quietly in the background. Switch off your own agents here, and see the system ones in Finder.</p>
+          </header>
+          <h2 class="section-title">Login items</h2>
+          <div class="list" id="login-list"></div>
+          <h2 class="section-title">Background agents</h2>
+          <div class="list" id="agent-list"></div>
+        </section>
+
+        <!-- UPDATES -->
+        <section class="view" id="view-updates">
+          <header class="view-head">
+            <p class="eyebrow">Updates</p>
+            <h1 id="updates-title">Anything gone stale?</h1>
+            <p class="lede">Apps and tools installed with Homebrew that have newer versions. Updates run in the terminal so you can see what happens.</p>
+          </header>
+          <div class="btn-row" style="margin-bottom: 14px">
+            <button class="btn btn-primary" id="update-all" disabled>Update everything</button>
+            <button class="btn btn-quiet" id="update-recheck">Check again</button>
+          </div>
+          <div class="list" id="updates-list"></div>
+        </section>
+        <!-- RUN SCREEN -->
+        <section class="runner" id="runner" hidden aria-live="polite">
+          <header class="runner-head">
+            <div class="runner-mascot" aria-hidden="true">
+              <img src="../../brand/mark.svg" alt="" width="72" height="72" />
+              <div class="dirt"><i></i><i></i><i></i></div>
+            </div>
+            <div>
+              <p class="eyebrow" id="run-eyebrow"></p>
+              <h1 id="run-title"></h1>
+              <p class="lede" id="run-activity"></p>
+            </div>
+          </header>
+          <div class="runner-body" id="run-body"></div>
+          <footer class="runner-foot">
+            <button class="btn-link" id="run-watch">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z" /><path d="M7 10l3 2-3 2M12 14h4" /></svg>
+              Watch Grub work
+            </button>
+            <div class="runner-actions" id="run-actions"></div>
+          </footer>
+        </section>
+      </main>
+    </div>
+
+    <!-- terminal drawer -->
+    <div class="scrim" id="scrim"></div>
+    <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="drawer-title">Behind the scenes</div>
+          <div class="drawer-hint">This is the engine Grub drives for you. You can watch, or type if you like.</div>
+        </div>
+        <button class="btn btn-quiet" id="drawer-close">Hide</button>
+      </div>
+      <div class="term" id="term"></div>
+    </div>
+
+    <!-- ask sheet -->
+    <div class="modal" id="ask" role="alertdialog" aria-modal="true" aria-labelledby="ask-title">
+      <img src="../../brand/mark.svg" alt="" width="56" height="56" />
+      <h2 id="ask-title"></h2>
+      <p id="ask-body"></p>
+      <ul class="ask-list" id="ask-list" hidden></ul>
+      <input class="search ask-input" id="ask-input" type="password" placeholder="Mac password" aria-label="Mac password" autocomplete="off" hidden />
+      <p class="ask-error" id="ask-error" hidden></p>
+      <div class="modal-actions" id="ask-actions"></div>
+    </div>
+
+    <!-- onboarding -->
+    <div class="onboard" id="onboard" hidden>
+      <div class="onboard-card">
+        <ol class="onboard-dots" id="onboard-dots" aria-hidden="true"></ol>
+
+        <section class="step" data-step="welcome">
+          <img class="step-mark" src="../../brand/mark.svg" alt="" width="64" height="64" />
+          <h1>Hi, I'm Grub.</h1>
+          <p>I eat the junk your Mac piles up: caches, leftovers, forgotten installers. Let's get me set up. It takes about a minute.</p>
+          <div class="step-actions"><button class="btn btn-primary" data-next>Let's dig</button></div>
+        </section>
+
+        <section class="step" data-step="engine">
+          <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M7 4v6a5 5 0 0 0 10 0V4" /><path d="M12 15v5" /></svg></div>
+          <h1>First, my teeth.</h1>
+          <p>Grub does its chewing with a small, free cleaning engine. Let's make sure it's on your Mac.</p>
+          <div class="check" id="engine-check"><span class="check-dot"></span><span class="check-text">Checking…</span></div>
+          <div class="step-actions">
+            <button class="btn btn-primary" id="engine-install" hidden>Install it</button>
+            <button class="btn btn-primary" data-next id="engine-next" hidden>Continue</button>
+          </div>
+        </section>
+
+        <section class="step" data-step="disk">
+          <div class="step-icon"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg></div>
+          <h1>Let me into every room.</h1>
+          <p>Some of the biggest messes hide in places macOS keeps locked. Full Disk Access lets Grub look there. Grub only reads and removes what you approve.</p>
+          <ol class="howto">
+            <li>Click <b>Open Settings</b>.</li>
+            <li>Turn on <b>Grub</b> in the list. Add it with + if it's missing.</li>
+            <li>Come back here. This screen updates on its own.</li>
+          </ol>
+          <div class="check" id="disk-check"><span class="check-dot"></span><span class="check-text">Not allowed yet</span></div>
+          <div class="step-actions">
+            <button class="btn btn-quiet" data-next>Skip for now</button>
+            <button class="btn btn-primary" id="disk-open">Open Settings</button>
+          </div>
+        </section>
+
+        <section class="step" data-step="automation">
+          <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M12 3v8" /><path d="M6.3 7.3a8 8 0 1 0 11.4 0" /></svg></div>
+          <h1>Let me peek at login items.</h1>
+          <p>To show which apps open when you log in, and switch them off for you, Grub needs to talk to System Events. macOS will ask once.</p>
+          <div class="check" id="auto-check"><span class="check-dot"></span><span class="check-text">Not asked yet</span></div>
+          <div class="step-actions">
+            <button class="btn btn-quiet" data-next>Skip for now</button>
+            <button class="btn btn-primary" id="auto-allow">Allow</button>
+          </div>
+        </section>
+
+        <section class="step" data-step="prefs">
+          <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M4 18a8 8 0 0 1 16 0" /><path d="M12 18l4-5" /></svg></div>
+          <h1>Last bits.</h1>
+          <p>A couple of preferences. You can change them any time from the version number at the bottom of the sidebar.</p>
+          <div class="pref">
+            <div><b>Open Grub at login</b><span>Keeps Grub in the menu bar with live stats.</span></div>
+            <button class="switch" role="switch" id="pref-login" aria-checked="false" aria-label="Open Grub at login"></button>
+          </div>
+          <div class="pref">
+            <div><b>Keep the engine updated</b><span>Checks once a day and updates quietly.</span></div>
+            <button class="switch" role="switch" id="pref-update" aria-checked="true" aria-label="Keep the engine updated"></button>
+          </div>
+          <p class="fineprint">Some optimizations need your Mac password. Grub asks for it in its own window, only when needed, and never stores it.</p>
+          <div class="step-actions"><button class="btn btn-primary" id="onboard-done">Start eating</button></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- about -->
+    <div class="modal about" id="about" role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <img src="../../brand/mark.svg" alt="" width="64" height="64" />
+      <h2 id="about-title">Grub</h2>
+      <p>A free, GPL-licensed face for <a href="#" data-link="https://github.com/tw93/Mole">Mole</a>, the open-source cleanup engine by tw93 (GPL-3.0). Grub isn't affiliated with Mole. If you like the polished official app, see <a href="#" data-link="https://mole.fit/">mole.fit</a>.</p>
+      <div class="about-version">
+        <div><b id="about-mole">Mole</b><span id="about-mole-status">Up to date as far as Grub knows.</span></div>
+        <button class="btn btn-quiet" id="about-update">Update now</button>
+      </div>
+      <div class="pref">
+        <div><b>Update automatically</b><span>Once a day, quietly.</span></div>
+        <button class="switch" role="switch" id="about-auto" aria-checked="true" aria-label="Update the engine automatically"></button>
+      </div>
+      <div class="pref">
+        <div><b>Open Grub at login</b><span>Stays in the menu bar.</span></div>
+        <button class="switch" role="switch" id="about-login" aria-checked="false" aria-label="Open Grub at login"></button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-quiet" id="about-onboard">Run setup again</button>
+        <button class="btn btn-primary" id="about-close">Done</button>
+      </div>
+    </div>
+
+    <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+    <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script src="app.js"></script>
+    <script src="runner.js"></script>
+  </body>
+</html>
