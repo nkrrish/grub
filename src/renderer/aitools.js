@@ -185,7 +185,7 @@ function aiBar() {
   const size = bytes(picked.reduce((n, i) => n + i.bytes, 0));
   const go = $('#ai-go');
   go.disabled = ai.busy || !picked.length;
-  go.textContent = ai.busy ? 'Chewing…' : picked.length ? `Chomp ${picked.length} · ${size}` : 'Pick something';
+  go.textContent = ai.busy ? 'Burying…' : picked.length ? `Bury ${picked.length} · ${size}` : 'Pick something';
   $('#ai-bar-note').textContent = picked.some((i) => i.group !== 'cache')
     ? 'Files go to the Trash. Worktrees are removed with git; their branches stay.'
     : 'Everything goes to the Trash, so you can change your mind.';
@@ -208,7 +208,7 @@ $('#ai-go').addEventListener('click', () => {
   const sessions = picked.some((i) => i.group === 'session');
   confirmRun(
     `Grub will remove ${aiSummary(picked)}, about ${bytes(picked.reduce((n, i) => n + i.bytes, 0))}.${sessions ? ' Sessions won’t rebuild, but they sit in the Trash until you empty it.' : ''}`,
-    'Chomp',
+    'Bury',
     async () => {
       ai.busy = true;
       aiBar();
