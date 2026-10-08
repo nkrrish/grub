@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 693.95 1024 330.05" width="1024" height="330.05">
-  <!-- Front layer. Covers the bottom of Grub. On the 1024 icon canvas this box sits at x 0, y 693.95. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="204 693.95 616 116.05" width="616" height="116.05">
+  <!-- Front layer: the mound of dirt from the app logo. Covers the bottom of Grub. On the 1024 icon canvas this box sits at x 204, y 693.95. -->
   <g transform="translate(160 150) scale(11)">
-    <path d="M-32 52 c3.5-3.4 7.5-3.4 11 0 c3.5 3.4 7.5 3.4 11 0 c3.5-3.4 7.5-3.4 11 0 c3.5 3.4 7.5 3.4 11 0 c3.5-3.4 7.5-3.4 11 0 c3.5 3.4 7.5 3.4 11 0 c3.5-3.4 7.5-3.4 11 0 c3.5 3.4 7.5 3.4 11 0 c3.5-3.4 7.5-3.4 11 0 c3.5 3.4 7.5 3.4 11 0 c3.5-3.4 7.5-3.4 11 0 V81 H-32z" fill="#5B4636"/>
+    <path d="M4 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 12 0v8H4z" fill="#5B4636"/>
   </g>
 </svg>
