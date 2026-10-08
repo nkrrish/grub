@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('mole', {
   home: () => ipcRenderer.invoke('mole:home'),
   reveal: (p) => ipcRenderer.invoke('mole:reveal', p),
   appIcon: (p) => ipcRenderer.invoke('app:icon', p),
+  quitApp: (app, force) => ipcRenderer.invoke('app:quitProcess', { app, force }),
   watchStatus: () => ipcRenderer.send('status:start'),
   lastStatus: () => ipcRenderer.invoke('status:last'),
   onStatus: on('status'),

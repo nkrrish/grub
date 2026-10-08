@@ -72,16 +72,9 @@ const Vitals = (() => {
     return { connected, paired: all.length };
   }
 
-  // One row per app: an app's helper processes are added together.
+  // Main already adds each app's helpers together and keeps the top 6.
   function apps(s) {
-    const rows = new Map();
-    for (const p of s.top_processes || []) {
-      const label = p.label || p.name;
-      const row = rows.get(label) || rows.set(label, { label, app: p.app || null, cpu: 0, mem: 0 }).get(label);
-      row.cpu += p.cpu || 0;
-      row.mem += p.memory_bytes || 0;
-    }
-    return [...rows.values()].sort((a, b) => b.cpu - a.cpu);
+    return (s.top_processes || []).map((p) => ({ label: p.label || p.name, app: p.app || null, cpu: p.cpu || 0, mem: p.memory_bytes || 0 }));
   }
 
   function cpuWord(load) {

@@ -85,8 +85,8 @@
 
       <div class="panel" id="customize" hidden>
         <div class="cust-head">
-          <b>What's in the menu</b>
-          <span>Pick what Grub shows here.</span>
+          <div><b>What's in the menu</b><span>Pick what Grub shows here.</span></div>
+          <button class="done" id="cust-done">Done</button>
         </div>
         <div class="cust-list" id="cust-list"></div>
         <button class="cust-row cust-extra" role="switch" id="cust-text" aria-checked="true">
@@ -97,11 +97,16 @@
 
       <footer class="foot">
         <button data-open="burrow">Open Grub</button>
-        <button id="t-customize" aria-pressed="false">Customize</button>
-        <button id="t-quit">Quit</button>
+        <div class="foot-right">
+          <button class="icon-btn" id="t-customize" aria-pressed="false" aria-label="Customize the menu" title="Customize the menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+          </button>
+          <button id="t-quit">Quit</button>
+        </div>
       </footer>
     </div>
     <script src="vitals.js"></script>
+    <script src="procmenu.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>

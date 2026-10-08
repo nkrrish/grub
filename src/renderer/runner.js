@@ -293,8 +293,16 @@ function onExit(code) {
   if (!run) return;
   run.exited = true;
   run.code = code;
-  digState.cache.clear();
-  updatesLoaded = false;
+  // anything that touched the disk makes the remembered scans wrong; the next visit rescans
+  if (!run.key.endsWith('-dry')) {
+    digState.cache.clear();
+    updatesLoaded = false;
+    window.mole.dropCache([
+      'analyze:',
+      ...(run.opts.command === 'uninstall' ? ['apps'] : []),
+      ...(run.opts.tool === 'brew' || run.opts.command === 'update' ? ['updates'] : []),
+    ]);
+  }
   if (run.quiet) {
     quietResolve?.(code);
     quietResolve = null;
