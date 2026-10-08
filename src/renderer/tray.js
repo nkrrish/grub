@@ -34,12 +34,7 @@ function el(tag, attrs = {}, ...kids) {
   return node;
 }
 
-function mood(score) {
-  if (score >= 85) return 'Fresh as dirt.';
-  if (score >= 70) return 'Slightly whiffy.';
-  if (score >= 50) return 'Starting to smell.';
-  return 'Something died in here.';
-}
+const headline = Vitals.headliner(); // same line as the window's Status page
 
 function text(id, value) {
   $(id).textContent = value;
@@ -71,8 +66,8 @@ function render(s) {
   badge.textContent = score;
   badge.classList.toggle('is-meh', score < 70 && score >= 50);
   badge.classList.toggle('is-bad', score < 50);
-  text('#t-title', mood(score));
-  text('#t-sub', s.health_score_msg || s.hardware?.model || '');
+  text('#t-title', headline(s));
+  text('#t-sub', Vitals.sentence(s.health_score_msg) || s.hardware?.model || '');
 
   const cpu = s.cpu?.usage ?? 0;
   const heat = Vitals.heat(s);
@@ -103,7 +98,7 @@ function render(s) {
   const up = Vitals.speed(net.up);
   text('#t-net', down.value);
   text('#t-net-unit', down.unit);
-  text('#t-net-chip', net.vpn ? 'VPN' : '');
+  text('#t-net-chip', net.vpn ? 'VPN on' : '');
   push(netHistory, net.down + net.up);
   spark('#t-net-spark', netHistory);
   text('#t-net-note', net.online ? `↑ ${up.value} ${up.unit} up` : 'Offline');
@@ -122,7 +117,7 @@ function render(s) {
   const bat = Vitals.battery(s);
   text('#t-bat', bat ? bat.pct : '--');
   text('#t-bat-state', bat ? `% · ${bat.state}` : '');
-  text('#t-bat-chip', bat?.health ? `Health ${bat.health}` : '');
+  text('#t-bat-chip', bat?.health ? `Health ${bat.health.toLowerCase()}` : '');
   text(
     '#t-bat-note',
     bat

@@ -467,7 +467,8 @@ function saveCache() {
 }
 
 // Answers from the cache unless asked for a fresh scan; results carry `at` so the page can say how old they are.
-function cached(key, fresh, scan) {
+// keep(res) false hands the answer back without remembering it (say, one that is only a permission prompt).
+function cached(key, fresh, scan, keep = () => true) {
   const hit = cacheStore()[key];
   if (hit && !fresh) return { ok: true, ...hit };
   if (!inflight.has(key)) {
@@ -476,6 +477,11 @@ function cached(key, fresh, scan) {
       scan()
         .then((res) => {
           if (!res.ok) return res;
+          if (!keep(res)) {
+            delete cacheStore()[key];
+            saveCache();
+            return { ...res, at: Date.now() };
+          }
           cacheStore()[key] = { at: Date.now(), data: res.data };
           saveCache();
           return { ok: true, ...cacheStore()[key] };
@@ -594,7 +600,9 @@ ipcMain.handle('app:icon', async (_e, p) => {
 });
 ipcMain.handle('ai:scan', () => aiTools.scan(readSettings()));
 ipcMain.handle('ai:clean', (_e, ids) => (Array.isArray(ids) ? aiTools.clean(ids.filter((i) => typeof i === 'string')) : { ok: false }));
-ipcMain.handle('startup:list', listStartup);
+ipcMain.handle('startup:list', (_e, fresh) =>
+  cached('startup', fresh, listStartup, (res) => !res.data.loginDenied && !res.data.loginError)
+);
 ipcMain.handle('startup:toggle', (_e, a) => toggleAgent(a));
 ipcMain.handle('startup:removeLogin', (_e, name) => removeLoginItem(name));
 ipcMain.handle('updates:list', (_e, fresh) =>

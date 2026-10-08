@@ -207,15 +207,17 @@
             <p class="eyebrow">Disk</p>
             <h1>Where did all the space go?</h1>
             <p class="lede">Grub tunnels through a folder and ranks what's inside. Click a folder to dig deeper.</p>
+            <div class="fresh" id="dig-fresh">
+              <button class="fresh-btn" id="dig-refresh" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
           </header>
           <div class="toolbar">
             <div class="toolbar-left">
               <div class="crumbs" id="dig-crumbs"></div>
               <span class="dig-total" id="dig-total"></span>
-              <span class="fresh" id="dig-fresh">
-                <span class="fresh-text"></span>
-                <button class="fresh-btn" id="dig-refresh">Refresh</button>
-              </span>
             </div>
             <div class="seg" role="tablist" aria-label="Disk layout">
               <button role="tab" data-layout="map">Map</button>
@@ -252,14 +254,14 @@
             <p class="eyebrow">Uninstall</p>
             <h1>Evict an app, leftovers and all.</h1>
             <p class="lede">Grub shows you every file before it goes. Everything lands in the Trash, so you can change your mind.</p>
+            <div class="fresh" id="evict-fresh">
+              <button class="fresh-btn" id="evict-refresh" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
           </header>
-          <div class="search-row">
-            <input class="search" id="evict-search" type="search" placeholder="Find an app" aria-label="Find an app" />
-            <span class="fresh" id="evict-fresh">
-              <span class="fresh-text"></span>
-              <button class="fresh-btn" id="evict-refresh">Refresh</button>
-            </span>
-          </div>
+          <input class="search" id="evict-search" type="search" placeholder="Find an app" aria-label="Find an app" />
           <div class="list" id="evict-list"></div>
         </section>
 
@@ -270,14 +272,16 @@
             <p class="eyebrow">AI tools</p>
             <h1 id="ai-title">Sniffing through your AI tools…</h1>
             <p class="lede">Claude Code, Codex, Cursor and OpenCode pile up old versions, caches, chats and worktrees. Grub never lists anything used in the last day, and everything it removes goes to the Trash.</p>
+            <div class="fresh" id="ai-fresh">
+              <button class="fresh-btn" id="ai-refresh" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
           </header>
           <div class="ai-tools" id="ai-tools"></div>
           <div class="toolbar ai-toolbar">
             <div class="ai-retention" id="ai-retention"></div>
-            <span class="fresh" id="ai-fresh">
-              <span class="fresh-text"></span>
-              <button class="fresh-btn" id="ai-refresh">Refresh</button>
-            </span>
           </div>
           <div id="ai-body"></div>
           </div>
@@ -303,6 +307,12 @@
             <p class="eyebrow">Startup items</p>
             <h1>Who sneaks in when your Mac boots?</h1>
             <p class="lede">Login items open with you. Launch agents run quietly in the background. Switch off your own agents here, and see the system ones in Finder.</p>
+            <div class="fresh" id="startup-fresh">
+              <button class="fresh-btn" id="startup-refresh" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
           </header>
           <h2 class="section-title">Login items</h2>
           <div class="list" id="login-list"></div>
@@ -316,13 +326,15 @@
             <p class="eyebrow">Updates</p>
             <h1 id="updates-title">Anything gone stale?</h1>
             <p class="lede">Apps and tools installed with Homebrew that have newer versions. Updates run in the terminal so you can see what happens.</p>
+            <div class="fresh" id="updates-fresh">
+              <button class="fresh-btn" id="update-recheck" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
           </header>
           <div class="btn-row" style="margin-bottom: 14px">
             <button class="btn btn-primary" id="update-all" disabled>Update everything</button>
-            <span class="fresh" id="updates-fresh">
-              <button class="btn btn-quiet" id="update-recheck">Check again</button>
-              <span class="fresh-text"></span>
-            </span>
           </div>
           <div class="list" id="updates-list"></div>
         </section>

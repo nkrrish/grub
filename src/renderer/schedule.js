@@ -320,8 +320,16 @@ function openCadence(key, trigger) {
   if (popFor?.key === key) return closeCadence();
   popFor = { key, trigger };
   renderPop();
-  const r = trigger.getBoundingClientRect();
   pop.hidden = false;
+  placePop();
+  requestAnimationFrame(() => pop.classList.add('is-open'));
+  pop.querySelector('[aria-checked="true"]')?.focus();
+}
+
+// Re-run whenever the button or the popover changes size, so it stays pinned to its trigger.
+function placePop() {
+  if (!popFor) return;
+  const r = popFor.trigger.getBoundingClientRect();
   const w = pop.offsetWidth;
   const h = pop.offsetHeight;
   const below = r.bottom + 8 + h < innerHeight - 12;
@@ -330,8 +338,6 @@ function openCadence(key, trigger) {
   pop.style.top = `${below ? r.bottom + 8 : r.top - h - 8}px`;
   // grow out of the button that opened it
   pop.style.transformOrigin = `${r.left + r.width / 2 - left}px ${below ? 'top' : 'bottom'}`;
-  requestAnimationFrame(() => pop.classList.add('is-open'));
-  pop.querySelector('[aria-checked="true"]')?.focus();
 }
 
 function closeCadence() {
@@ -348,8 +354,10 @@ async function setCadence(patch) {
   sched.routines[key].cadence = { ...sched.routines[key].cadence, ...patch };
   renderPop();
   renderRoutines();
+  placePop();
   sched = await window.mole.schedule.set(key, { cadence: patch });
   renderSchedule();
+  placePop();
 }
 
 function radioRow(label, options, current, onPick, cls) {
@@ -395,7 +403,7 @@ function renderPop() {
     { class: 'pop-select', 'aria-label': 'Day of the month', onchange: (e) => setCadence({ monthday: +e.target.value }) },
     ...Array.from({ length: 28 }, (_, i) => el('option', { value: i + 1, ...(c.monthday === i + 1 ? { selected: '' } : {}) }, ordinal(i + 1)))
   );
-  pop.replaceChildren(
+  const parts = [
     el('div', { class: 'pop-label' }, 'How often'),
     radioRow('How often', [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']], c.freq, (freq) => setCadence({ freq }), 'pop-freq'),
     c.freq === 'weekly'
@@ -425,8 +433,9 @@ function renderPop() {
         'Use for every chore'
       ),
       el('button', { class: 'btn btn-primary pop-done', onclick: closeCadence }, 'Done')
-    )
-  );
+    ),
+  ].filter(Boolean);
+  pop.replaceChildren(...parts);
 }
 
 document.addEventListener('pointerdown', (e) => {
@@ -585,7 +594,10 @@ function toggleReport(id) {
 function taskRow(t) {
   const r = ROUTINE[t.key];
   const line = taskLine(t);
-  const highlights = (t.highlights || []).filter((h) => h.name).slice(0, 3);
+  // big things the engine won't touch on its own (say, Docker's data) always make the cut
+  const all = (t.highlights || []).filter((h) => h.name);
+  const review = all.filter((h) => h.review);
+  const highlights = all.filter((h) => !h.review).slice(0, Math.max(1, 3 - review.length)).concat(review);
   return el(
     'li',
     { class: `report-task tone-${line.tone || 'muted'}` },

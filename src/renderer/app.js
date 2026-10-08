@@ -128,7 +128,7 @@ function digging(text) {
 
 // Scans are cached across launches; pages show how old theirs is and quietly rescan past these ages.
 const HOUR = 3600e3;
-const TTL = { apps: 24 * HOUR, disk: 24 * HOUR, updates: 6 * HOUR };
+const TTL = { apps: 24 * HOUR, disk: 24 * HOUR, updates: 6 * HOUR, startup: 12 * HOUR };
 const isStale = (at, ttl) => !!at && Date.now() - at > ttl;
 
 function ago(at) {
@@ -141,10 +141,13 @@ function ago(at) {
   return d === 1 ? 'yesterday' : `${d} days ago`;
 }
 
-// "Checked 3 h ago · Refresh" line; busy swaps it for a checking note.
+// One quiet "↻ 3 h ago" button: the time is the label, the icon says what a click does.
 function setFreshness(id, at, busy) {
   const slot = $('#' + id);
-  slot.querySelector('.fresh-text').textContent = busy ? 'Checking…' : at ? `Checked ${ago(at)}` : '';
+  const label = busy ? 'Digging…' : at ? ago(at) : '';
+  slot.querySelector('.fresh-text').textContent = label;
+  slot.querySelector('button').setAttribute('aria-label', busy ? 'Digging…' : at ? `Dig again. Last dig ${label}` : 'Dig again');
+  slot.querySelector('button').title = at && !busy ? `Last dig ${label}. Click to dig again.` : 'Dig again';
   slot.querySelector('button').disabled = !!busy;
   slot.classList.toggle('is-busy', !!busy);
 }
@@ -215,7 +218,10 @@ function show(view, chore) {
   }
   if (view === 'history') loadHistory();
   if (view === 'schedule') showSchedule();
-  if (view === 'startup') loadStartup();
+  if (view === 'startup') {
+    if (!startupAt || isStale(startupAt, TTL.startup)) loadStartup(!!startupAt);
+    else setFreshness('startup-fresh', startupAt);
+  }
   if (view === 'updates') {
     if (!updatesLoaded || isStale(updatesAt, TTL.updates)) loadUpdates(updatesLoaded);
     else setFreshness('updates-fresh', updatesAt);
@@ -229,66 +235,7 @@ $$('[data-view], [data-goto]').forEach((b) =>
 
 /* ---------- status ---------- */
 
-function healthTitle(score) {
-  if (score >= 85) return 'Fresh as dirt.';
-  if (score >= 70) return 'Slightly whiffy.';
-  if (score >= 50) return 'Starting to smell.';
-  return 'Something died in here.';
-}
-
-// What's dragging the score down, worst first. Each culprit has a few lines; one is picked
-// when it takes over and kept, so the headline doesn't reshuffle on every 2s update.
-const CULPRIT_LINES = {
-  disk: [(v) => `Only ${v.free} of disk left. Snack time.`, () => "Disk's stuffed. Grub's drooling.", (v) => `Disk's ${v.pct}% full. Dinner is served.`],
-  memory: [() => "Memory's full. Grub can't think.", (v) => `${v.pct}% memory. The burrow's crowded.`],
-  swap: [(v) => `${v.swap} of swap. Messy burrow.`],
-  cpu: [() => "CPU's sweating. Grub smells smoke.", (v) => `CPU at ${v.pct}%. Something's chewing.`],
-  trash: [(v) => `${v.trash} rotting in the Trash. Yum.`],
-  uptime: [(v) => `Up ${v.days} days. Even moles sleep.`],
-  battery: [(v) => `Battery at ${v.cap}%. Running on crumbs.`],
-  none: [() => 'Fresh as dirt.', () => 'Not a crumb out of place.', () => 'Nothing to eat here.'],
-};
-
-const cpuSamples = [];
-let culprit = { key: null, line: null };
-let challenger = { key: null, count: 0 };
-
-function findCulprits(s) {
-  const out = [];
-  const disk = (s.disks || []).find((d) => d.mount === '/');
-  if (disk && disk.used_percent >= 90)
-    out.push({ key: 'disk', sev: 3 + (disk.used_percent - 90) / 10, v: { free: bytes(disk.total - disk.used), pct: Math.round(disk.used_percent) } });
-  const mem = s.memory || {};
-  if (mem.used_percent >= 85) out.push({ key: 'memory', sev: 2 + (mem.used_percent - 85) / 15, v: { pct: Math.round(mem.used_percent) } });
-  if (mem.swap_used >= 2e9) out.push({ key: 'swap', sev: 1.8 + mem.swap_used / 1e10, v: { swap: bytes(mem.swap_used) } });
-  cpuSamples.push(s.cpu?.usage ?? 0);
-  if (cpuSamples.length > 5) cpuSamples.shift();
-  const cpu = cpuSamples.reduce((n, x) => n + x, 0) / cpuSamples.length; // sustained, not one spike
-  if (cpuSamples.length >= 3 && cpu >= 70) out.push({ key: 'cpu', sev: 2 + (cpu - 70) / 30, v: { pct: Math.round(cpu) } });
-  if (s.trash_size >= 1e9) out.push({ key: 'trash', sev: 1.5, v: { trash: bytes(s.trash_size) } });
-  const days = Math.floor((s.uptime_seconds || 0) / 86400);
-  if (days >= 7) out.push({ key: 'uptime', sev: 1, v: { days } });
-  const bat = s.batteries?.[0];
-  if (bat && bat.capacity && bat.capacity < 80) out.push({ key: 'battery', sev: 1, v: { cap: bat.capacity } });
-  return out.sort((a, b) => b.sev - a.sev);
-}
-
-function culpritLine(s) {
-  const found = findCulprits(s);
-  const top = found[0] || { key: 'none', sev: 0, v: {} };
-  const current = found.find((c) => c.key === culprit.key) || (culprit.key === 'none' && !found.length ? top : null);
-  // a new culprit has to stay on top for 3 updates (~6s) before it takes over
-  if (!current || top.key === culprit.key) challenger = { key: null, count: 0 };
-  else if (challenger.key === top.key) challenger.count++;
-  else challenger = { key: top.key, count: 1 };
-  if (!current || challenger.count >= 3) {
-    const lines = CULPRIT_LINES[top.key];
-    culprit = { key: top.key, line: lines[Math.floor(Math.random() * lines.length)] };
-    challenger = { key: null, count: 0 };
-    return culprit.line(top.v);
-  }
-  return culprit.line(current.v); // same phrasing, fresh numbers
-}
+const headline = Vitals.headliner();
 
 function diskNote(pct) {
   if (pct >= 90) return "That's not a Mac, that's a landfill.";
@@ -303,9 +250,8 @@ function renderStatus(s) {
   ring.classList.toggle('is-meh', score < 70 && score >= 50);
   ring.classList.toggle('is-bad', score < 50);
   $('#health-score').textContent = score;
-  $('#health-msg').textContent = s.health_score_msg || '';
-  const line = culpritLine(s);
-  $('#burrow-title').textContent = culprit.key === 'none' && score < 85 ? healthTitle(score) : line;
+  $('#health-msg').textContent = Vitals.sentence(s.health_score_msg);
+  $('#burrow-title').textContent = headline(s);
   $('#burrow-lede').textContent = `${s.hardware?.model || 'Mac'} · up ${s.uptime || '?'} · ${s.procs ?? '?'} processes`;
 
   const disk = (s.disks || []).find((d) => d.mount === '/') || s.disks?.[0];
@@ -340,7 +286,7 @@ function renderStatus(s) {
   const bat = Vitals.battery(s);
   $('#bat-pct').textContent = bat ? bat.pct : '--';
   $('#bat-state').textContent = bat ? `% · ${bat.state}` : '';
-  chip('#bat-chip', bat?.health && `Health ${bat.health}`);
+  chip('#bat-chip', bat?.health && `Health ${bat.health.toLowerCase()}`);
   facts(
     '#bat-facts',
     bat
@@ -798,7 +744,7 @@ function renderApps() {
         appIcon(a.path),
         el('div', { class: 'row-name' }, a.name, el('span', { class: 'row-sub' }, a.path)),
         el('div', { class: 'bar' }, el('div', { class: 'bar-fill bar-pink', style: `--v:${a.bytes / max}` })),
-        el('div', { class: 'row-size' }, a.size),
+        el('div', { class: 'row-size' }, bytes(a.bytes)),
         el(
           'div',
           { style: 'display:flex;gap:6px' },
@@ -827,23 +773,54 @@ async function loadHistory() {
   $('#history-title').textContent = total ? `Grub has eaten ${bytes(total)} so far.` : "Grub's food diary.";
   if (!sessions.length) return list.replaceChildren(el('div', { class: 'empty' }, 'Empty. Grub is starving.'));
   list.replaceChildren(
-    ...sessions.map((s, i) =>
-      el(
+    ...sessions.map((s, i) => {
+      const nav = navFor(s.command);
+      const skipped = s.actions?.skipped ?? 0;
+      return el(
         'div',
         { class: 'row', style: `--i:${Math.min(i, 20)}` },
-        icon(ICON_FILE),
+        nav.icon,
         el(
           'div',
           { class: 'row-name' },
-          s.command,
-          el('span', { class: 'row-sub' }, `${s.started_at} · ${s.items} items · ${s.actions?.skipped ?? 0} skipped`)
+          nav.label,
+          el(
+            'span',
+            { class: 'row-sub' },
+            [when(s.started_at), plural(s.items, 'item'), skipped && `${skipped} skipped`].filter(Boolean).join(' · ')
+          )
         ),
         el('div'),
-        el('div', { class: 'row-size' }, s.size),
+        el('div', { class: 'row-size' }, bytes(parseSize(s.size))),
         el('div', { class: 'row-sub' }, s.failed_tasks ? `${s.failed_tasks} failed` : '')
-      )
-    )
+      );
+    })
   );
+}
+
+// History speaks in the sidebar's names and icons, not Mole's command names.
+const NAV_OF = { uninstall: '[data-view="evict"]', update: '[data-view="updates"]', ai: '[data-view="ai"]' };
+function navFor(command) {
+  const item = $(`.nav-item${NAV_OF[command] || `[data-chore="${command}"]`}`);
+  const svg = item?.querySelector('svg')?.cloneNode(true);
+  if (svg) svg.setAttribute('class', 'row-icon');
+  return {
+    label: item?.querySelector('span')?.textContent || command.charAt(0).toUpperCase() + command.slice(1),
+    icon: svg || icon(ICON_FILE),
+  };
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// "Today, 18:06", "Yesterday, 09:12", "3 Oct, 14:20"
+function when(stamp) {
+  const d = new Date(String(stamp).replace(' ', 'T'));
+  if (isNaN(d)) return stamp;
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5);
+  if (days === 0) return `Today, ${time}`;
+  if (days === 1) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })}, ${time}`;
 }
 
 /* ---------- tidy up (one click) ---------- */
@@ -860,13 +837,23 @@ $('#tidy-btn').addEventListener('click', tidy);
 
 const SCOPE_LABEL = { user: 'Yours', system: 'All users', daemon: 'System daemon' };
 
-async function loadStartup() {
+let startupAt = 0;
+
+// Same pattern as the app list: remembered answer first, rescan on request or once it's old.
+async function loadStartup(fresh) {
   const logins = $('#login-list');
   const agents = $('#agent-list');
-  logins.replaceChildren(digging('Checking who gets in at boot…'));
-  agents.replaceChildren();
-  const res = await window.mole.startup.list();
+  if (!startupAt) {
+    logins.replaceChildren(digging('Checking who gets in at boot…'));
+    agents.replaceChildren();
+  }
+  setFreshness('startup-fresh', startupAt, true);
+  const res = await window.mole.startup.list(fresh);
   const { loginItems, agents: list, loginError, loginDenied } = res.data;
+  // a permission prompt isn't remembered, so the next visit asks macOS again
+  startupAt = loginDenied || loginError ? 0 : res.at;
+  setFreshness('startup-fresh', res.at);
+  if (!fresh && isStale(startupAt, TTL.startup)) loadStartup(true);
 
   if (loginDenied)
     logins.replaceChildren(
@@ -881,7 +868,7 @@ async function loadStartup() {
           el('span', {}, 'macOS needs your OK first. In Automation, turn on System Events for Grub, then come back and check again.')
         ),
         el('button', { class: 'btn btn-primary', onclick: () => window.mole.startup.openAutomationSettings() }, 'Allow access'),
-        el('button', { class: 'btn btn-quiet', onclick: loadStartup }, 'Check again')
+        el('button', { class: 'btn btn-quiet', onclick: () => loadStartup(true) }, 'Check again')
       )
     );
   else if (loginError) logins.replaceChildren(el('div', { class: 'empty' }, 'Could not read login items: ' + loginError));
@@ -894,6 +881,7 @@ async function loadStartup() {
           { class: 'row row-wide', style: `--i:${i}` },
           appIcon(item.path),
           el('div', { class: 'row-name' }, item.name, el('span', { class: 'row-sub' }, item.path)),
+          el('span'), // tag column, so Remove lines up with the agents' switches below
           el(
             'button',
             {
@@ -902,7 +890,7 @@ async function loadStartup() {
                 confirmRun(`${item.name} will stop opening when you log in. The app itself stays installed.`, 'Remove', async () => {
                   const r = await window.mole.startup.removeLogin(item.name);
                   if (!r.ok) alert(r.error);
-                  loadStartup();
+                  loadStartup(true);
                 }),
             },
             'Remove'
@@ -928,7 +916,7 @@ async function loadStartup() {
                 btn.disabled = true;
                 const r = await window.mole.startup.toggle({ label: a.label, file: a.file, enable: !on });
                 if (!r.ok) alert(r.error);
-                loadStartup();
+                loadStartup(true);
               },
             })
           : el('button', { class: 'row-act', onclick: () => window.mole.reveal(a.file) }, 'Show in Finder');
@@ -949,6 +937,8 @@ async function loadStartup() {
     })
   );
 }
+
+$('#startup-refresh').addEventListener('click', () => loadStartup(true));
 
 /* ---------- updates ---------- */
 

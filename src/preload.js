@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('mole', {
   lastStatus: () => ipcRenderer.invoke('status:last'),
   onStatus: on('status'),
   startup: {
-    list: () => ipcRenderer.invoke('startup:list'),
+    list: (fresh) => ipcRenderer.invoke('startup:list', fresh),
     toggle: (a) => ipcRenderer.invoke('startup:toggle', a),
     removeLogin: (name) => ipcRenderer.invoke('startup:removeLogin', name),
     openAutomationSettings: () => ipcRenderer.invoke('perm:open', 'automation'),

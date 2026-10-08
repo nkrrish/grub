@@ -270,19 +270,8 @@ function createScheduler({ app, env, mo, brew, home, notify, onChange, isBusy, r
       ok: r.code === 0,
       bytes: total ? parseSize(total[1]) : found.reduce((n, i) => n + i.size, 0),
       count: count ? +count[1] : found.length,
-      highlights: groupProjects(found).slice(0, 4),
+      highlights: found.sort((a, b) => b.size - a.size).slice(0, 4),
     };
-  }
-
-  // "~/code/app/node_modules" and "~/code/app/dist" read better as one project.
-  function groupProjects(items) {
-    const byProject = new Map();
-    for (const i of items) {
-      const m = /^(.*?)\/(node_modules|target|dist|build|\.next|vendor|__pycache__|\.gradle|Pods|DerivedData|\.venv|venv)(\/|$)/.exec(i.name);
-      const key = m ? m[1] : i.name;
-      byProject.set(key, (byProject.get(key) || 0) + i.size);
-    }
-    return [...byProject].map(([name, size]) => ({ name, size })).sort((a, b) => b.size - a.size);
   }
 
   const INSTALLER_DIRS = ['Downloads', 'Desktop', 'Documents', 'Library/Downloads'].map((d) => path.join(home, d)).concat(['/Users/Shared']);

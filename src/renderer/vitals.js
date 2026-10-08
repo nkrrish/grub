@@ -85,5 +85,76 @@ const Vitals = (() => {
     return pct < 60 ? 'Plenty of room.' : pct < 85 ? 'Getting cosy.' : 'Packed. Close a few apps.';
   }
 
-  return { speed, battery, network, heat, gpu, gadgets, apps, cpuWord, memWord };
+
+  // Mole Title Cases its notes ("Good: High Memory"); the rest of Grub speaks in sentence case.
+  function sentence(str) {
+    return (str || '').replace(/(?!^)\b([A-Z])([a-z]+)/g, (_, a, b) => a.toLowerCase() + b);
+  }
+
+  function healthTitle(score) {
+    if (score >= 85) return 'Fresh as dirt.';
+    if (score >= 70) return 'Slightly whiffy.';
+    if (score >= 50) return 'Starting to smell.';
+    return 'Something died in here.';
+  }
+
+  // What's dragging the score down, worst first. Each culprit has a few lines.
+  const CULPRIT_LINES = {
+    disk: [(v) => `Only ${v.free} of disk left. Snack time.`, () => "Disk's stuffed. Grub's drooling.", (v) => `Disk's ${v.pct}% full. Dinner is served.`],
+    memory: [() => "Memory's full. Grub can't think.", (v) => `${v.pct}% memory. The burrow's crowded.`],
+    swap: [(v) => `${v.swap} of swap. Messy burrow.`],
+    cpu: [() => "CPU's sweating. Grub smells smoke.", (v) => `CPU at ${v.pct}%. Something's chewing.`],
+    trash: [(v) => `${v.trash} rotting in the Trash. Yum.`],
+    uptime: [(v) => `Up ${v.days} days. Even moles sleep.`],
+    battery: [(v) => `Battery at ${v.cap}%. Running on crumbs.`],
+    none: [() => 'Fresh as dirt.', () => 'Not a crumb out of place.', () => 'Nothing to eat here.'],
+  };
+
+  function findCulprits(s, cpuSamples) {
+    const out = [];
+    const disk = (s.disks || []).find((d) => d.mount === '/');
+    if (disk && disk.used_percent >= 90)
+      out.push({ key: 'disk', sev: 3 + (disk.used_percent - 90) / 10, v: { free: bytes(disk.total - disk.used), pct: Math.round(disk.used_percent) } });
+    const mem = s.memory || {};
+    if (mem.used_percent >= 85) out.push({ key: 'memory', sev: 2 + (mem.used_percent - 85) / 15, v: { pct: Math.round(mem.used_percent) } });
+    if (mem.swap_used >= 2e9) out.push({ key: 'swap', sev: 1.8 + mem.swap_used / 1e10, v: { swap: bytes(mem.swap_used) } });
+    cpuSamples.push(s.cpu?.usage ?? 0);
+    if (cpuSamples.length > 5) cpuSamples.shift();
+    const cpu = cpuSamples.reduce((n, x) => n + x, 0) / cpuSamples.length; // sustained, not one spike
+    if (cpuSamples.length >= 3 && cpu >= 70) out.push({ key: 'cpu', sev: 2 + (cpu - 70) / 30, v: { pct: Math.round(cpu) } });
+    if (s.trash_size >= 1e9) out.push({ key: 'trash', sev: 1.5, v: { trash: bytes(s.trash_size) } });
+    const days = Math.floor((s.uptime_seconds || 0) / 86400);
+    if (days >= 7) out.push({ key: 'uptime', sev: 1, v: { days } });
+    const bat = s.batteries?.[0];
+    if (bat && bat.capacity && bat.capacity < 80) out.push({ key: 'battery', sev: 1, v: { cap: bat.capacity } });
+    return out.sort((a, b) => b.sev - a.sev);
+  }
+
+  // One headline per window, fed every status update. The phrasing is kept while a culprit stays on top,
+  // so it doesn't reshuffle every 2s; it's picked by the hour so the window and the menu bar agree.
+  function headliner() {
+    const cpuSamples = [];
+    let culprit = { key: null, line: null };
+    let challenger = { key: null, count: 0 };
+    return (s) => {
+      const found = findCulprits(s, cpuSamples);
+      const top = found[0] || { key: 'none', sev: 0, v: {} };
+      const current = found.find((c) => c.key === culprit.key) || (culprit.key === 'none' && !found.length ? top : null);
+      // a new culprit has to stay on top for 3 updates (~6s) before it takes over
+      if (!current || top.key === culprit.key) challenger = { key: null, count: 0 };
+      else if (challenger.key === top.key) challenger.count++;
+      else challenger = { key: top.key, count: 1 };
+      let shown = current;
+      if (!current || challenger.count >= 3) {
+        const lines = CULPRIT_LINES[top.key];
+        culprit = { key: top.key, line: lines[Math.floor(Date.now() / 3.6e6) % lines.length] };
+        challenger = { key: null, count: 0 };
+        shown = top;
+      }
+      const score = s.health_score ?? 0;
+      return culprit.key === 'none' && score < 85 ? healthTitle(score) : culprit.line(shown.v);
+    };
+  }
+
+  return { speed, battery, network, heat, gpu, gadgets, apps, cpuWord, memWord, sentence, headliner };
 })();
