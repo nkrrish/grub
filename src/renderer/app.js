@@ -275,14 +275,23 @@ function zoomInto(tile, target) {
     : layer.animate([{ clipPath: from }, { clipPath: to }], { duration: 420, easing: EASE_IN_OUT, fill: 'forwards' });
   return {
     layer,
-    grown: grow.finished.catch(() => {}),
+    // never wait on the animation forever (a hidden window can pause it)
+    grown: Promise.race([grow.finished.catch(() => {}), new Promise((r) => setTimeout(r, 700))]),
     reveal() {
       map.classList.remove('is-zooming');
-      // re-rendering replaced the map's children; put the full-size layer back on top, then dissolve it
-      layer.style.clipPath = to;
-      layer.classList.add('is-revealing');
-      map.append(layer);
-      layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-out', fill: 'forwards' }).finished.then(() => layer.remove());
+      if (reduce) {
+        map.append(layer);
+        layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).finished.then(() => layer.remove());
+        return;
+      }
+      // The new tiles start in the parent's colour, so the big tile seems to crack apart,
+      // then each one settles into its own colour, biggest first.
+      const cs = getComputedStyle(layer);
+      for (const v of ['a', 'b', 'dot']) map.style.setProperty(`--born-${v}`, cs.getPropertyValue(`--tile-${v}`));
+      const tiles = [...map.querySelectorAll('.tile')];
+      tiles.forEach((t) => t.classList.add('is-born'));
+      layer.remove();
+      tiles.forEach((t, i) => setTimeout(() => t.classList.remove('is-born'), 90 + Math.min(i, 12) * 45));
     },
   };
 }

@@ -979,42 +979,42 @@ body.ask-open #ask {
   --tile-a: #c4ea63;
   --tile-b: #93b83a;
   --tile-ink: #14110f;
-  --tile-dot: rgba(20, 17, 15, 0.12);
+  --tile-dot: rgba(20, 17, 15, 0.06);
 }
 
 :is(.tile, .dig-zoom).t-moss {
   --tile-a: #8fae45;
   --tile-b: #6a8530;
   --tile-ink: #14110f;
-  --tile-dot: rgba(20, 17, 15, 0.14);
+  --tile-dot: rgba(20, 17, 15, 0.07);
 }
 
 :is(.tile, .dig-zoom).t-sprout {
   --tile-a: #5d6e35;
   --tile-b: #455227;
   --tile-ink: #eef3dc;
-  --tile-dot: rgba(243, 237, 228, 0.07);
+  --tile-dot: rgba(243, 237, 228, 0.035);
 }
 
 :is(.tile, .dig-zoom).t-soil {
   --tile-a: #4a3b2f;
   --tile-b: #382d24;
   --tile-ink: #e7dccd;
-  --tile-dot: rgba(243, 237, 228, 0.07);
+  --tile-dot: rgba(243, 237, 228, 0.035);
 }
 
 :is(.tile, .dig-zoom).t-snout {
   --tile-a: #8a5a60;
   --tile-b: #6a444a;
   --tile-ink: #fbe9eb;
-  --tile-dot: rgba(255, 255, 255, 0.07);
+  --tile-dot: rgba(255, 255, 255, 0.035);
 }
 
 :is(.tile, .dig-zoom).t-crumbs {
   --tile-a: #2f2924;
   --tile-b: #25201c;
   --tile-ink: var(--muted);
-  --tile-dot: rgba(243, 237, 228, 0.06);
+  --tile-dot: rgba(243, 237, 228, 0.03);
 }
 
 .tile-top {
@@ -1921,4 +1921,38 @@ body.ask-open .scrim {
 
 .map.is-zooming .tile {
   pointer-events: none;
+}
+
+/* ---------- tiles cracking out of the parent after a dig ---------- */
+
+.tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle, var(--born-dot) 1px, transparent 1.4px) 0 0 / 7px 7px,
+    linear-gradient(160deg, var(--born-a), var(--born-b));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 340ms var(--ease-out);
+}
+
+.tile > :not(.tile-hint) {
+  transition: opacity 260ms var(--ease-out), transform 320ms var(--ease-out);
+}
+
+.tile.is-born {
+  animation: none;
+}
+
+.tile.is-born::after {
+  opacity: 1;
+  transition: none;
+}
+
+.tile.is-born > :not(.tile-hint) {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: none;
 }
