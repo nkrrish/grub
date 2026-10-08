@@ -201,14 +201,14 @@ function healthTitle(score) {
 // What's dragging the score down, worst first. Each culprit has a few lines; one is picked
 // when it takes over and kept, so the headline doesn't reshuffle on every 2s update.
 const CULPRIT_LINES = {
-  disk: [(v) => `Your disk is stuffed: ${v.free} left.`, (v) => `Only ${v.free} free. Grub smells a buffet.`, (v) => `The disk is ${v.pct}% full of who-knows-what.`],
-  memory: [(v) => `Memory's sweating at ${v.pct}%.`, (v) => `${v.pct}% of memory is spoken for.`],
-  swap: [(v) => `It's borrowing ${v.swap} of swap. Yikes.`, (v) => `${v.swap} of memory spilled onto the disk.`],
-  cpu: [(v) => `The CPU is running a marathon at ${v.pct}%.`, (v) => `Something's hogging the CPU (${v.pct}%).`],
-  trash: [(v) => `${v.trash} is rotting in the Trash.`, (v) => `The Trash is ripe: ${v.trash}.`],
-  uptime: [(v) => `Awake for ${v.days} days. Grub suggests a nap.`, (v) => `${v.days} days without a restart. Brave.`],
-  battery: [(v) => `Battery's down to ${v.cap}% of its old self.`],
-  none: [() => 'Nothing to sniff at.', () => 'Not a crumb out of place.'],
+  disk: [(v) => `Only ${v.free} left. Snack time.`, () => "Disk's stuffed. Grub's drooling.", (v) => `${v.pct}% full. Dinner is served.`],
+  memory: [() => "Memory's full. Grub can't think.", (v) => `${v.pct}% memory. The burrow's crowded.`],
+  swap: [(v) => `${v.swap} of swap. Messy burrow.`],
+  cpu: [() => "CPU's sweating. Grub smells smoke.", (v) => `CPU at ${v.pct}%. Something's chewing.`],
+  trash: [(v) => `${v.trash} rotting in the Trash. Yum.`],
+  uptime: [(v) => `Up ${v.days} days. Even moles sleep.`],
+  battery: [(v) => `Battery at ${v.cap}%. Running on crumbs.`],
+  none: [() => 'Fresh as dirt.', () => 'Not a crumb out of place.', () => 'Nothing to eat here.'],
 };
 
 const cpuSamples = [];
@@ -266,7 +266,8 @@ function renderStatus(s) {
   ring.classList.toggle('is-bad', score < 50);
   $('#health-score').textContent = score;
   $('#health-msg').textContent = s.health_score_msg || '';
-  $('#burrow-title').textContent = `${healthTitle(score)} ${culpritLine(s)}`;
+  const line = culpritLine(s);
+  $('#burrow-title').textContent = culprit.key === 'none' && score < 85 ? healthTitle(score) : line;
   $('#burrow-lede').textContent = `${s.hardware?.model || 'Mac'} · up ${s.uptime || '?'} · ${s.procs ?? '?'} processes`;
 
   const disk = (s.disks || []).find((d) => d.mount === '/') || s.disks?.[0];
