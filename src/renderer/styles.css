@@ -975,42 +975,42 @@ body.ask-open #ask {
 }
 
 /* soil → mold scale, plus snout pink for files and plain soil for the crumbs pile */
-.tile.t-mold {
+:is(.tile, .dig-zoom).t-mold {
   --tile-a: #c4ea63;
   --tile-b: #93b83a;
   --tile-ink: #14110f;
   --tile-dot: rgba(20, 17, 15, 0.12);
 }
 
-.tile.t-moss {
+:is(.tile, .dig-zoom).t-moss {
   --tile-a: #8fae45;
   --tile-b: #6a8530;
   --tile-ink: #14110f;
   --tile-dot: rgba(20, 17, 15, 0.14);
 }
 
-.tile.t-sprout {
+:is(.tile, .dig-zoom).t-sprout {
   --tile-a: #5d6e35;
   --tile-b: #455227;
   --tile-ink: #eef3dc;
   --tile-dot: rgba(243, 237, 228, 0.07);
 }
 
-.tile.t-soil {
+:is(.tile, .dig-zoom).t-soil {
   --tile-a: #4a3b2f;
   --tile-b: #382d24;
   --tile-ink: #e7dccd;
   --tile-dot: rgba(243, 237, 228, 0.07);
 }
 
-.tile.t-snout {
+:is(.tile, .dig-zoom).t-snout {
   --tile-a: #8a5a60;
   --tile-b: #6a444a;
   --tile-ink: #fbe9eb;
   --tile-dot: rgba(255, 255, 255, 0.07);
 }
 
-.tile.t-crumbs {
+:is(.tile, .dig-zoom).t-crumbs {
   --tile-a: #2f2924;
   --tile-b: #25201c;
   --tile-ink: var(--muted);
@@ -1881,4 +1881,44 @@ body.ask-open .scrim {
   from {
     opacity: 0;
   }
+}
+
+/* ---------- dig zoom ---------- */
+
+.dig-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--tile-ink);
+  background:
+    radial-gradient(circle, var(--tile-dot) 1px, transparent 1.4px) 0 0 / 7px 7px,
+    linear-gradient(160deg, var(--tile-a), var(--tile-b));
+  pointer-events: none;
+}
+
+.dig-zoom-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  animation: step-fade 200ms var(--ease-out) 300ms both;
+}
+
+.dig-zoom-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 900ms ease-in-out infinite alternate;
+}
+
+.dig-zoom.is-revealing .dig-zoom-label {
+  animation: none;
+}
+
+.map.is-zooming .tile {
+  pointer-events: none;
 }
