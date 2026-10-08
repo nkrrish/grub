@@ -428,7 +428,7 @@ h1 {
 
 .proc {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 200px 64px;
+  grid-template-columns: 22px minmax(0, 1fr) 200px 64px 26px;
   align-items: center;
   gap: 14px;
   min-height: 40px;
@@ -730,6 +730,69 @@ h1 {
 .search:focus {
   outline: 2px solid var(--rot);
   outline-offset: 0;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.search-row .search {
+  margin-bottom: 0;
+}
+
+/* "Checked 3 h ago · Refresh" */
+.fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fresh-text:empty {
+  display: none;
+}
+
+.fresh.is-busy .fresh-text {
+  animation: fresh-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes fresh-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.fresh-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fresh-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fresh-btn:not(:disabled):hover {
+    background: var(--surface-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fresh.is-busy .fresh-text {
+    animation: none;
+  }
 }
 
 .empty {
@@ -2426,4 +2489,89 @@ body.ask-open .scrim {
 .about-face {
   display: inline-grid;
   cursor: default;
+}
+
+/* ---------- hungry app menu ---------- */
+
+.proc-more {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  transition: background-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
+}
+
+.proc-more:active {
+  transform: scale(0.94);
+}
+
+.proc-more[aria-expanded='true'] {
+  background: rgba(243, 237, 228, 0.1);
+  color: var(--text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .proc-more:hover {
+    background: rgba(243, 237, 228, 0.08);
+    color: var(--text);
+  }
+  .proc-menu-item:hover {
+    background: rgba(243, 237, 228, 0.08);
+  }
+}
+
+.proc-menu {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  min-width: 190px;
+  max-width: 240px;
+  padding: 5px;
+  border: 1px solid rgba(243, 237, 228, 0.1);
+  border-radius: 11px;
+  background: #2a241f;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  transform-origin: top right;
+  animation: proc-menu-in 140ms var(--ease-out);
+}
+
+.proc-menu[hidden] {
+  display: none;
+}
+
+@keyframes proc-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.proc-menu-item {
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.proc-menu-item.is-danger {
+  color: var(--danger);
+}
+
+.proc-menu-note {
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proc-menu {
+    animation: none;
+  }
 }

@@ -94,6 +94,9 @@ const FRIENDLY = {
   bird: 'iCloud Drive',
   cloudphotod: 'iCloud Photos',
   coreduetd: 'Siri suggestions',
+  duetexpertd: 'Siri suggestions',
+  cfprefsd: 'Settings storage',
+  corespotlightd: 'Spotlight search',
   ANECompilerService: 'Apple Intelligence',
   photolibraryd: 'Photos library',
   mds: 'Spotlight search',
@@ -107,6 +110,8 @@ const FRIENDLY = {
   backupd: 'Time Machine',
   softwareupdated: 'Software Update',
   coreaudiod: 'Sound',
+  screencapture: 'Screenshot',
+  screencaptureui: 'Screenshot',
   bluetoothd: 'Bluetooth',
   launchd: 'macOS startup',
   syspolicyd: 'App security checks',
@@ -118,28 +123,84 @@ const FRIENDLY = {
   node: 'Node script',
 };
 
-const procCache = new Map(); // pid -> { app, label }
-
-// Adds the owning .app (for its icon) and a human name to each top process.
+// Mole lists only 5 processes, so Grub samples them all and adds each app's helpers together.
 async function nameProcesses(s) {
-  const procs = s.top_processes || [];
-  const missing = procs.filter((p) => !procCache.has(p.pid)).map((p) => p.pid);
-  if (missing.length) {
-    if (procCache.size > 500) procCache.clear();
-    const { stdout } = await run('/bin/ps', ['-o', 'pid=,comm=', '-p', missing.join(',')], { timeout: 5000 });
-    const paths = new Map(stdout.split('\n').map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter(Boolean).map((m) => [+m[1], m[2]]));
-    for (const pid of missing) {
-      const app = /^(.*?\.app)\//.exec(paths.get(pid) || '')?.[1] || null;
-      procCache.set(pid, { app, label: app ? path.basename(app, '.app') : null });
-    }
+  const { stdout } = await run('/bin/ps', ['-axo', 'pcpu=,rss=,comm='], { timeout: 5000 });
+  const apps = new Map();
+  for (const line of stdout.split('\n')) {
+    const m = /^\s*([\d.]+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (!m) continue;
+    const appPath = /^(.*?\.app)\//.exec(m[3])?.[1] || null;
+    const name = path.basename(m[3]);
+    const label = appPath ? path.basename(appPath, '.app') : FRIENDLY[name] || name;
+    const row = apps.get(label) || apps.set(label, { name, label, app: appPath, cpu: 0, memory_bytes: 0 }).get(label);
+    row.cpu += +m[1];
+    row.memory_bytes += +m[2] * 1024;
   }
-  for (const p of procs) {
-    const known = procCache.get(p.pid) || {};
-    p.app = known.app || null;
-    p.label = known.label || FRIENDLY[p.name] || p.name;
-  }
+  s.top_processes = [...apps.values()].sort((a, b) => b.cpu - a.cpu).slice(0, 6);
   return s;
 }
+
+/* ---------- quitting a hungry app ---------- */
+
+// Asks AppKit to quit (or force quit) the app at this bundle path. No Automation prompt needed.
+const QUIT_SCRIPT = `ObjC.import('AppKit');
+function run(argv) {
+  const apps = $.NSWorkspace.sharedWorkspace.runningApplications;
+  let n = 0;
+  for (let i = 0; i < apps.count; i++) {
+    const a = apps.objectAtIndex(i);
+    const u = a.bundleURL;
+    if (!u.isNil() && ObjC.unwrap(u.path) === argv[0]) {
+      argv[1] === '1' ? a.forceTerminate : a.terminate;
+      n++;
+    }
+  }
+  return n;
+}`;
+
+// Every process running from inside the bundle: the app, its helpers, its background bits.
+async function bundlePids(appPath) {
+  const { stdout } = await run('/bin/ps', ['-axo', 'pid=,comm='], { timeout: 5000 });
+  return stdout
+    .split('\n')
+    .map((l) => /^\s*(\d+)\s+(.*)$/.exec(l))
+    .filter((m) => m && m[2].startsWith(appPath + '/') && +m[1] !== process.pid)
+    .map((m) => ({ pid: +m[1], main: m[2].startsWith(appPath + '/Contents/MacOS/') }));
+}
+
+function signal(pids, sig) {
+  for (const { pid } of pids)
+    try {
+      process.kill(pid, sig);
+    } catch {}
+}
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function quitApp(appPath, force) {
+  const own = app.getAppPath().split('.app/')[0] + '.app';
+  if (typeof appPath !== 'string' || !appPath.endsWith('.app') || !fs.existsSync(appPath)) return { ok: false, error: 'Grub can’t find that app.' };
+  if (appPath === own) return { ok: false, error: 'Grub won’t eat itself.' };
+  if (appPath.startsWith('/System/Library/')) return { ok: false, error: 'That’s part of macOS. Grub leaves it alone.' };
+
+  await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', QUIT_SCRIPT, appPath, force ? '1' : '0'], { timeout: 10000 });
+  // a polite quit can stall on "save your changes?", so only the leftovers get stopped once the app itself is gone
+  for (let i = 0; i < (force ? 4 : 16); i++) {
+    await wait(500);
+    const left = await bundlePids(appPath);
+    if (!left.length) return { ok: true };
+    if (force || !left.some((p) => p.main)) signal(left, 'SIGTERM');
+  }
+  const left = await bundlePids(appPath);
+  if (!left.length) return { ok: true };
+  if (!force) return { ok: false, waiting: true, error: 'It’s still open. It may be asking about unsaved work.' };
+  signal(left, 'SIGKILL');
+  await wait(500);
+  return (await bundlePids(appPath)).length ? { ok: false, error: 'Some of it wouldn’t stop. It may belong to another user.' } : { ok: true };
+}
+
+ipcMain.handle('app:quitProcess', (_e, { app: appPath, force }) => quitApp(appPath, !!force));
 
 /* ---------- startup items ---------- */
 

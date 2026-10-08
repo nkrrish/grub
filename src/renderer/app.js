@@ -203,9 +203,11 @@ function show(view, chore) {
   );
   if (view === 'chores') renderChore(chore);
   if (view === 'dig') {
+    const known = digState.cache.get(digState.path);
     if (!digState.loaded) dig(digState.home);
-    else if (isStale(digState.cache.get(digState.path)?.at, TTL.disk)) dig(digState.path, null, true);
-    else setFreshness('dig-fresh', digState.cache.get(digState.path)?.at);
+    // a run since the last visit forgot this folder, or it's just old: rescan behind the current view
+    else if (!known || isStale(known.at, TTL.disk)) dig(digState.path, null, true);
+    else setFreshness('dig-fresh', known.at);
   }
   if (view === 'evict') {
     if (!appsLoaded || isStale(appsAt, TTL.apps)) loadApps(appsLoaded);
@@ -414,14 +416,16 @@ function renderProcs(s) {
   const maxMem = Math.max(...list.map((p) => p.mem), 1);
   const box = $('#procs');
   if (!box.children.length)
-    box.append(el('div', { class: 'proc proc-head' }, el('span'), el('span', {}, 'App'), el('span', {}, 'Memory'), el('span', {}, 'CPU')));
+    box.append(el('div', { class: 'proc proc-head' }, el('span'), el('span', {}, 'App'), el('span', {}, 'Memory'), el('span', {}, 'CPU'), el('span')));
   while (box.children.length > list.length + 1) box.lastChild.remove();
-  while (box.children.length < list.length + 1)
-    box.append(
-      el('div', { class: 'proc' }, el('span'), el('span', { class: 'proc-name' }), el('span', { class: 'proc-mem' }, el('i'), el('span')), el('span', { class: 'proc-cpu' }))
-    );
+  while (box.children.length < list.length + 1) {
+    const row = el('div', { class: 'proc' }, el('span'), el('span', { class: 'proc-name' }), el('span', { class: 'proc-mem' }, el('i'), el('span')), el('span', { class: 'proc-cpu' }));
+    row.append(ProcMenu.button(() => row.proc));
+    box.append(row);
+  }
   list.forEach((p, i) => {
     const row = box.children[i + 1];
+    row.proc = p;
     if (row.dataset.app !== String(p.app)) {
       row.dataset.app = String(p.app);
       row.firstChild.replaceWith(procIcon(p.app));
@@ -995,7 +999,7 @@ async function loadUpdates(fresh) {
   );
 }
 
-$('#update-recheck').addEventListener('click', loadUpdates);
+$('#update-recheck').addEventListener('click', () => loadUpdates(true));
 $('#update-all').addEventListener('click', () =>
   confirmRun('Homebrew will upgrade every outdated app and tool on the list.', 'Update everything', () => runTask({ tool: 'brew', names: [] }))
 );

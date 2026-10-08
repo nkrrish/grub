@@ -150,10 +150,14 @@ function renderProcs(s) {
   const list = Vitals.apps(s);
   const box = $('#t-procs');
   while (box.children.length > list.length) box.lastChild.remove();
-  while (box.children.length < list.length)
-    box.append(el('div', { class: 'proc' }, el('i'), el('span', { class: 'proc-name' }), el('span', { class: 'proc-num' }), el('span', { class: 'proc-num' })));
+  while (box.children.length < list.length) {
+    const row = el('div', { class: 'proc' }, el('i'), el('span', { class: 'proc-name' }), el('span', { class: 'proc-num' }), el('span', { class: 'proc-num' }));
+    row.append(ProcMenu.button(() => row.proc));
+    box.append(row);
+  }
   list.forEach((p, i) => {
     const row = box.children[i];
+    row.proc = p;
     if (row.dataset.app !== String(p.app)) {
       row.dataset.app = String(p.app);
       row.firstChild.replaceWith(procIcon(p.app));
@@ -184,7 +188,6 @@ function applySections() {
   const tiles = $$('.tile:not([hidden])');
   tiles.forEach((t, i) => t.classList.toggle('is-wide', tiles.length % 2 === 1 && i === tiles.length - 1));
   $('.tiles').hidden = !tiles.length;
-  $('#t-customize').textContent = $('#customize').hidden ? 'Customize' : 'Done';
   $('#cust-text').setAttribute('aria-checked', String(settings.menuBarText !== false));
   $$('#cust-list [data-key]').forEach((b) => b.setAttribute('aria-checked', String(on.has(b.dataset.key))));
   fit();
@@ -211,13 +214,15 @@ $('#cust-text').addEventListener('click', async () => {
   applySections();
 });
 
-$('#t-customize').addEventListener('click', () => {
-  const open = $('#customize').hidden;
+function customize(open) {
   $('#customize').hidden = !open;
   $('#vitals').hidden = open;
   $('#t-customize').setAttribute('aria-pressed', String(open));
   applySections();
-});
+}
+
+$('#t-customize').addEventListener('click', () => customize($('#customize').hidden));
+$('#cust-done').addEventListener('click', () => customize(false));
 
 // The window is as tall as what's shown; main caps it at the screen height.
 let lastHeight = 0;

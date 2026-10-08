@@ -202,6 +202,10 @@
             <div class="toolbar-left">
               <div class="crumbs" id="dig-crumbs"></div>
               <span class="dig-total" id="dig-total"></span>
+              <span class="fresh" id="dig-fresh">
+                <span class="fresh-text"></span>
+                <button class="fresh-btn" id="dig-refresh">Refresh</button>
+              </span>
             </div>
             <div class="seg" role="tablist" aria-label="Disk layout">
               <button role="tab" data-layout="map">Map</button>
@@ -239,7 +243,13 @@
             <h1>Evict an app, leftovers and all.</h1>
             <p class="lede">Grub shows you every file before it goes. Everything lands in the Trash, so you can change your mind.</p>
           </header>
-          <input class="search" id="evict-search" type="search" placeholder="Find an app" aria-label="Find an app" />
+          <div class="search-row">
+            <input class="search" id="evict-search" type="search" placeholder="Find an app" aria-label="Find an app" />
+            <span class="fresh" id="evict-fresh">
+              <span class="fresh-text"></span>
+              <button class="fresh-btn" id="evict-refresh">Refresh</button>
+            </span>
+          </div>
           <div class="list" id="evict-list"></div>
         </section>
 
@@ -275,7 +285,10 @@
           </header>
           <div class="btn-row" style="margin-bottom: 14px">
             <button class="btn btn-primary" id="update-all" disabled>Update everything</button>
-            <button class="btn btn-quiet" id="update-recheck">Check again</button>
+            <span class="fresh" id="updates-fresh">
+              <button class="btn btn-quiet" id="update-recheck">Check again</button>
+              <span class="fresh-text"></span>
+            </span>
           </div>
           <div class="list" id="updates-list"></div>
         </section>
@@ -419,6 +432,7 @@
     <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
     <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
     <script src="vitals.js"></script>
+    <script src="procmenu.js"></script>
     <script src="app.js"></script>
     <script src="runner.js"></script>
   </body>
