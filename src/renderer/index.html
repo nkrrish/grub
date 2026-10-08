@@ -84,6 +84,11 @@
             <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
             <span>Updates</span>
           </button>
+          <button class="nav-item" data-view="schedule" id="nav-schedule">
+            <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M9 3v4m6-4v4" /><path d="M12 13.5v2.5l1.6 1" /></svg>
+            <span>Schedule</span>
+            <span class="nav-badge" id="schedule-badge" hidden></span>
+          </button>
           <div class="nav-label">Evidence</div>
           <button class="nav-item" data-view="history">
             <svg viewBox="0 0 24 24"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="8" /></svg>
@@ -321,6 +326,22 @@
           </div>
           <div class="list" id="updates-list"></div>
         </section>
+        <!-- SCHEDULE -->
+        <section class="view" id="view-schedule">
+          <header class="view-head">
+            <p class="eyebrow">Schedule</p>
+            <h1 id="sched-title">Grub's feeding schedule.</h1>
+            <p class="lede">Pick what Grub keeps an eye on and how often. It can just report back, or clean up on its own. Everything it removes goes the same careful way as when you do it.</p>
+          </header>
+          <div class="sched-next" id="sched-next"></div>
+          <div class="sched-list" id="sched-list" role="list"></div>
+          <div class="sched-reports-head">
+            <h2 class="section-title">Reports</h2>
+            <span class="sched-reports-count" id="sched-reports-count"></span>
+          </div>
+          <div class="sched-reports" id="sched-reports"></div>
+        </section>
+
         <!-- RUN SCREEN -->
         <section class="runner" id="runner" hidden aria-live="polite">
           <header class="runner-head">
@@ -469,5 +490,6 @@
     <script src="app.js"></script>
     <script src="runner.js"></script>
     <script src="aitools.js"></script>
+    <script src="schedule.js"></script>
   </body>
 </html>

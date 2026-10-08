@@ -31,6 +31,16 @@ contextBridge.exposeInMainWorld('mole', {
     scan: () => ipcRenderer.invoke('ai:scan'),
     clean: (ids) => ipcRenderer.invoke('ai:clean', ids),
   },
+  schedule: {
+    get: () => ipcRenderer.invoke('schedule:get'),
+    set: (key, patch) => ipcRenderer.invoke('schedule:set', { key, patch }),
+    setAll: (patch) => ipcRenderer.invoke('schedule:setAll', patch),
+    runNow: (keys) => ipcRenderer.invoke('schedule:runNow', keys),
+    cancel: () => ipcRenderer.invoke('schedule:cancel'),
+    read: (ids) => ipcRenderer.invoke('schedule:read', ids),
+    remove: (id) => ipcRenderer.invoke('schedule:remove', id),
+    onChange: on('schedule'),
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (patch) => ipcRenderer.invoke('settings:set', patch),
