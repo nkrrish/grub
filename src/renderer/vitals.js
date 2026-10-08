@@ -74,7 +74,7 @@ const Vitals = (() => {
 
   // Main already adds each app's helpers together and keeps the top 6.
   function apps(s) {
-    return (s.top_processes || []).map((p) => ({ label: p.label || p.name, app: p.app || null, cpu: p.cpu || 0, mem: p.memory_bytes || 0 }));
+    return (s.top_processes || []).map((p) => ({ label: p.label || p.name, app: p.app || null, cpu: p.cpu || 0, mem: p.memory_bytes || 0, count: p.count || 1 }));
   }
 
   function cpuWord(load) {

@@ -53,7 +53,7 @@ const ProcMenu = (() => {
       menu.replaceChildren(
         item(`Quit ${p.label}`, '', () => quit(p, false)),
         item('Force quit…', 'is-danger', () => confirmForce(p)),
-        note('Stops its helpers too.')
+        note(p.count > 1 ? `Stops all ${p.count} of its processes.` : 'Stops it completely.')
       );
     menu.hidden = false;
     // under the button, kept inside the window

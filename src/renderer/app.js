@@ -214,6 +214,7 @@ function show(view, chore) {
     else setFreshness('evict-fresh', appsAt);
   }
   if (view === 'history') loadHistory();
+  if (view === 'schedule') showSchedule();
   if (view === 'startup') loadStartup();
   if (view === 'updates') {
     if (!updatesLoaded || isStale(updatesAt, TTL.updates)) loadUpdates(updatesLoaded);

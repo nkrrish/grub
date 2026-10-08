@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain, shell, nativeImage, Tray, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeImage, Tray, screen, Notification, powerMonitor } = require('electron');
 const { execFile, spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const pty = require('node-pty');
+const { createScheduler } = require('./schedule');
 const aiTools = require('./aitools');
 
 // Apps launched from Finder get a bare PATH, so look for Homebrew's tools directly.
@@ -124,19 +125,36 @@ const FRIENDLY = {
   node: 'Node script',
 };
 
-// Mole lists only 5 processes, so Grub samples them all and adds each app's helpers together.
-async function nameProcesses(s) {
-  const { stdout } = await run('/bin/ps', ['-axo', 'pcpu=,rss=,comm='], { timeout: 5000 });
-  const apps = new Map();
+// Every process with its parent. Each one belongs to the .app it runs from or, failing that,
+// to the nearest ancestor that runs from one (so an editor's language servers count as the editor).
+async function processTable() {
+  const { stdout } = await run('/bin/ps', ['-axo', 'pid=,ppid=,uid=,pcpu=,rss=,comm='], { timeout: 5000 });
+  const procs = new Map();
   for (const line of stdout.split('\n')) {
-    const m = /^\s*([\d.]+)\s+(\d+)\s+(.*)$/.exec(line);
-    if (!m) continue;
-    const appPath = /^(.*?\.app)\//.exec(m[3])?.[1] || null;
-    const name = path.basename(m[3]);
-    const label = appPath ? path.basename(appPath, '.app') : FRIENDLY[name] || name;
-    const row = apps.get(label) || apps.set(label, { name, label, app: appPath, cpu: 0, memory_bytes: 0 }).get(label);
-    row.cpu += +m[1];
-    row.memory_bytes += +m[2] * 1024;
+    const m = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+([\d.]+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (m) procs.set(+m[1], { pid: +m[1], ppid: +m[2], uid: +m[3], cpu: +m[4], mem: +m[5] * 1024, comm: m[6] });
+  }
+  const own = /^(.*?\.app)\//;
+  const owner = (p, seen = 0) => {
+    if (p.app !== undefined) return p.app;
+    const direct = own.exec(p.comm)?.[1];
+    const parent = procs.get(p.ppid);
+    p.app = direct || (p.ppid > 1 && parent && seen < 64 ? owner(parent, seen + 1) : null);
+    return p.app;
+  };
+  for (const p of procs.values()) owner(p);
+  return procs;
+}
+
+async function nameProcesses(s) {
+  const apps = new Map();
+  for (const p of (await processTable()).values()) {
+    const name = path.basename(p.comm);
+    const label = p.app ? path.basename(p.app, '.app') : FRIENDLY[name] || name;
+    const row = apps.get(label) || apps.set(label, { name, label, app: p.app, cpu: 0, memory_bytes: 0, count: 0 }).get(label);
+    row.cpu += p.cpu;
+    row.memory_bytes += p.mem;
+    row.count++;
   }
   s.top_processes = [...apps.values()].sort((a, b) => b.cpu - a.cpu).slice(0, 6);
   return s;
@@ -148,30 +166,39 @@ async function nameProcesses(s) {
 const QUIT_SCRIPT = `ObjC.import('AppKit');
 function run(argv) {
   const apps = $.NSWorkspace.sharedWorkspace.runningApplications;
-  let n = 0;
+  const out = [];
   for (let i = 0; i < apps.count; i++) {
     const a = apps.objectAtIndex(i);
     const u = a.bundleURL;
-    if (!u.isNil() && ObjC.unwrap(u.path) === argv[0]) {
+    const p = u.isNil() ? '' : ObjC.unwrap(u.path);
+    // nested apps count too: Docker's window is Docker.app/Contents/MacOS/Docker Desktop.app
+    if (p === argv[0] || p.startsWith(argv[0] + '/')) {
       argv[1] === '1' ? a.forceTerminate : a.terminate;
-      n++;
+      out.push(a.processIdentifier);
     }
   }
-  return n;
+  return JSON.stringify(out);
 }`;
 
-// Every process running from inside the bundle: the app, its helpers, its background bits.
-async function bundlePids(appPath) {
-  const { stdout } = await run('/bin/ps', ['-axo', 'pid=,comm='], { timeout: 5000 });
-  return stdout
-    .split('\n')
-    .map((l) => /^\s*(\d+)\s+(.*)$/.exec(l))
-    .filter((m) => m && m[2].startsWith(appPath + '/') && +m[1] !== process.pid)
-    .map((m) => ({ pid: +m[1], main: m[2].startsWith(appPath + '/Contents/MacOS/') }));
+// The app, its helpers, and anything they started. Only this user's processes,
+// and never Grub or anything Grub started.
+async function family(appPath, also = []) {
+  const procs = await processTable();
+  const grub = new Set([process.pid]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const p of procs.values()) if (!grub.has(p.pid) && grub.has(p.ppid)) (grub.add(p.pid), (grew = true));
+  }
+  // a child whose parent already quit is re-parented to launchd, so earlier members are matched by pid + path
+  const earlier = new Map(also.map((p) => [p.pid, p.comm]));
+  const uid = process.getuid();
+  return [...procs.values()].filter(
+    (p) => p.uid === uid && !grub.has(p.pid) && (p.app === appPath || earlier.get(p.pid) === p.comm)
+  );
 }
 
-function signal(pids, sig) {
-  for (const { pid } of pids)
+function signal(procs, sig) {
+  for (const { pid } of procs)
     try {
       process.kill(pid, sig);
     } catch {}
@@ -185,20 +212,27 @@ async function quitApp(appPath, force) {
   if (appPath === own) return { ok: false, error: 'Grub won’t eat itself.' };
   if (appPath.startsWith('/System/Library/')) return { ok: false, error: 'That’s part of macOS. Grub leaves it alone.' };
 
-  await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', QUIT_SCRIPT, appPath, force ? '1' : '0'], { timeout: 10000 });
-  // a polite quit can stall on "save your changes?", so only the leftovers get stopped once the app itself is gone
+  const before = await family(appPath);
+  const { stdout } = await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', QUIT_SCRIPT, appPath, force ? '1' : '0'], { timeout: 10000 });
+  let windows = [];
+  try {
+    windows = JSON.parse(stdout.trim() || '[]');
+  } catch {}
+  // a polite quit can stall on "save your changes?", so the rest is only stopped once the app's windows are gone
   for (let i = 0; i < (force ? 4 : 16); i++) {
     await wait(500);
-    const left = await bundlePids(appPath);
-    if (!left.length) return { ok: true };
-    if (force || !left.some((p) => p.main)) signal(left, 'SIGTERM');
+    const left = await family(appPath, before);
+    if (!left.length) return { ok: true, stopped: before.length };
+    if (force || !left.some((p) => windows.includes(p.pid))) signal(left, 'SIGTERM');
   }
-  const left = await bundlePids(appPath);
-  if (!left.length) return { ok: true };
+  const left = await family(appPath, before);
+  if (!left.length) return { ok: true, stopped: before.length };
   if (!force) return { ok: false, waiting: true, error: 'It’s still open. It may be asking about unsaved work.' };
   signal(left, 'SIGKILL');
   await wait(500);
-  return (await bundlePids(appPath)).length ? { ok: false, error: 'Some of it wouldn’t stop. It may belong to another user.' } : { ok: true };
+  return (await family(appPath, before)).length
+    ? { ok: false, error: 'Some of it wouldn’t stop. It may belong to another user.' }
+    : { ok: true, stopped: before.length };
 }
 
 ipcMain.handle('app:quitProcess', (_e, { app: appPath, force }) => quitApp(appPath, !!force));
@@ -308,6 +342,8 @@ function buildSession(opts) {
 
 ipcMain.handle('session:start', (_e, opts) => {
   const { file, args, label } = buildSession(opts);
+  // a person asking for something beats a scheduled checkup
+  scheduler.cancel();
   if (session) session.kill();
   session = pty.spawn(file, args, { name: 'xterm-256color', cols: opts.cols, rows: opts.rows, cwd: HOME, env: ENV });
   const current = session;
@@ -321,6 +357,58 @@ ipcMain.handle('session:start', (_e, opts) => {
 ipcMain.on('session:input', (_e, d) => session?.write(d));
 ipcMain.on('session:resize', (_e, { cols, rows }) => session?.resize(cols, rows));
 ipcMain.on('session:kill', () => session?.kill());
+
+/* ---------- schedule ---------- */
+
+const TASK_NAMES = { clean: 'Clean', optimize: 'Optimize', purge: 'Purge projects', installer: 'Installers', updates: 'Updates' };
+
+function reportHeadline(r) {
+  const ate = r.tasks.filter((t) => t.mode === 'auto' && t.bytes).reduce((n, t) => n + t.bytes, 0);
+  const found = r.tasks.filter((t) => t.mode === 'report' && t.bytes).reduce((n, t) => n + t.bytes, 0);
+  const fmt = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
+  const updates = r.tasks.find((t) => t.key === 'updates' && t.mode === 'report')?.count || 0;
+  const parts = [];
+  if (ate) parts.push(`Grub ate ${fmt(ate)}`);
+  if (found) parts.push(`${ate ? 'found' : 'Found'} ${fmt(found)} more to eat`);
+  if (updates) parts.push(`${updates} update${updates === 1 ? '' : 's'} waiting`);
+  return parts.length ? parts.join(', ') + '.' : 'Nothing to eat. Your Mac is spotless.';
+}
+
+const scheduler = createScheduler({
+  app,
+  env: ENV,
+  mo,
+  brew: () => find('brew') || 'brew',
+  home: HOME,
+  readStatus: () => lastStatus,
+  isBusy: () => !!session,
+  onChange: (snap) => {
+    broadcast('schedule', snap);
+    updateDockBadge(snap);
+  },
+  notify: (report) => {
+    if (report.trigger !== 'schedule' || !Notification.isSupported()) return;
+    const n = new Notification({ title: "Grub's checkup is in", body: reportHeadline(report), silent: true });
+    n.on('click', () => {
+      showWindow();
+      win.webContents.send('navigate', 'schedule');
+    });
+    n.show();
+  },
+});
+
+function updateDockBadge(snap) {
+  const unread = snap.reports.filter((r) => !r.read).length;
+  if (process.platform === 'darwin') app.dock?.setBadge(unread ? String(unread) : '');
+}
+
+ipcMain.handle('schedule:get', () => scheduler.get());
+ipcMain.handle('schedule:set', (_e, { key, patch }) => scheduler.set(key, patch || {}));
+ipcMain.handle('schedule:setAll', (_e, patch) => scheduler.setAll(patch || {}));
+ipcMain.handle('schedule:runNow', (_e, keys) => (session ? scheduler.get() : scheduler.runNow(keys)));
+ipcMain.handle('schedule:cancel', () => scheduler.cancel());
+ipcMain.handle('schedule:read', (_e, ids) => scheduler.markRead(ids));
+ipcMain.handle('schedule:remove', (_e, id) => scheduler.removeReport(id));
 
 /* ---------- settings ---------- */
 
@@ -616,6 +704,10 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   if (find('mo')) startWatcher();
+  scheduler.start();
+  updateDockBadge(scheduler.get());
+  // a run missed while the lid was shut catches up shortly after waking
+  powerMonitor.on('resume', () => scheduler.wake());
   const { autoUpdateMole, lastMoleUpdate } = readSettings();
   if (autoUpdateMole && Date.now() - lastMoleUpdate > 24 * 3600 * 1000) setTimeout(updateMoleQuietly, 15000);
 });
@@ -624,6 +716,7 @@ app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
   app.isQuitting = true;
   session?.kill();
+  scheduler.cancel();
   watcher?.removeAllListeners('exit');
   watcher?.kill();
 });
