@@ -1972,28 +1972,34 @@ body.ask-open .scrim {
   transform-origin: center;
 }
 
-body.is-running .grub-face .gf-head {
+body.is-running.run-visible #run-face .gf-head,
+body.is-running:not(.run-visible) #grub-face .gf-head {
   animation: chomp 620ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-body.is-running .grub-face .gf-teeth {
+body.is-running.run-visible #run-face .gf-teeth,
+body.is-running:not(.run-visible) #grub-face .gf-teeth {
   animation: clack 155ms ease-in-out infinite alternate;
 }
 
-body.is-running .grub-face .gf-crumbs rect {
+body.is-running.run-visible #run-face .gf-crumbs rect,
+body.is-running:not(.run-visible) #grub-face .gf-crumbs rect {
   animation: fling 620ms var(--ease-out) infinite;
 }
 
-body.is-running .grub-face .gf-crumbs rect:nth-child(1) {
+body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(1),
+body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(1) {
   --dx: -10px;
 }
 
-body.is-running .grub-face .gf-crumbs rect:nth-child(2) {
+body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(2),
+body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(2) {
   --dx: 10px;
   animation-delay: 210ms;
 }
 
-body.is-running .grub-face .gf-crumbs rect:nth-child(3) {
+body.is-running.run-visible #run-face .gf-crumbs rect:nth-child(3),
+body.is-running:not(.run-visible) #grub-face .gf-crumbs rect:nth-child(3) {
   --dx: -16px;
   animation-delay: 410ms;
 }
