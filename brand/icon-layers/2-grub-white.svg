@@ -5,7 +5,7 @@
     <circle cx="24.5" cy="33" r="2.7" fill="#14110F"/>
     <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round" fill="none"/>
     <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
-    <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
-    <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+    <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#DCCDB7"/>
+    <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#DCCDB7"/>
   </g>
 </svg>
