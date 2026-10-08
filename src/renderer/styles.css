@@ -1660,7 +1660,9 @@ body.about-open .about {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: flex;
+  /* same columns as .pick-row so the label lines up with the item names */
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   flex: none;
   align-items: center;
   gap: 14px;
@@ -1678,7 +1680,6 @@ body.about-open .about {
 }
 
 .pick-all-count {
-  margin-left: auto;
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
