@@ -1664,6 +1664,18 @@ button.sidebar-foot {
   color: var(--rot);
 }
 
+/* Settings rows are edge-aligned, so the actions sit on the same edges: secondary left, Done right. */
+.about .modal-actions {
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.about-by {
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .about-version {
   display: flex;
   align-items: center;
