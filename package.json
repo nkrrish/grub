@@ -1,6 +1,6 @@
 {
   "name": "grub",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A free, open-source Mac cleaner with a live health dashboard, disk map, menu bar stats, startup control and updates.",
   "main": "src/main.js",
   "license": "GPL-3.0-or-later",
@@ -15,8 +15,8 @@
     "dist": "npm run package && sh scripts/make-dmg.sh"
   },
   "devDependencies": {
-    "@electron/packager": "^18.4.4",
-    "electron": "^38.8.6"
+    "@electron/packager": "^20.3.0",
+    "electron": "^43.7.9"
   },
   "dependencies": {
     "@fontsource-variable/fredoka": "^5.3.0",

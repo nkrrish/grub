@@ -18,6 +18,8 @@ async function render(win, { w, h, out }) {
   win.setContentSize(w * 2, h * 2);
   await win.loadFile(path.join(root, 'build/og/og.html'), { query: { scale: '2', w: String(w), h: String(h) } });
   for (let i = 0; i < 80 && win.getTitle() !== 'ready'; i++) await new Promise((r) => setTimeout(r, 100));
+  // Offscreen frames lag the canvas (Electron 42+): wait for two painted frames before capturing.
+  await win.webContents.executeJavaScript('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
   const image = await win.webContents.capturePage({ x: 0, y: 0, width: w * 2, height: h * 2 });
   const big = path.join(root, 'build/og/render@2x.png');
   fs.writeFileSync(big, image.resize({ width: w * 2, height: h * 2 }).toPNG());

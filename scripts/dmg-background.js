@@ -12,6 +12,8 @@ async function render(scale) {
   const win = new BrowserWindow({ show: false, width: 660 * scale, height: 420 * scale, useContentSize: true, webPreferences: { offscreen: true } });
   await win.loadFile(path.join(dir, 'background.html'), { query: { scale: String(scale) } });
   for (let i = 0; i < 80 && win.getTitle() !== 'ready'; i++) await new Promise((r) => setTimeout(r, 100));
+  // Offscreen frames lag the canvas (Electron 42+): wait for two painted frames before capturing.
+  await win.webContents.executeJavaScript('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
   const image = await win.webContents.capturePage({ x: 0, y: 0, width: 660 * scale, height: 420 * scale });
   const file = path.join(dir, 'background@2x.png');
   fs.writeFileSync(file, image.resize({ width: 660 * scale, height: 420 * scale }).toPNG());

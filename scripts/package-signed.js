@@ -6,9 +6,10 @@ const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
 const { packager } = require('@electron/packager');
-const { generateAssetCatalogForIcon } = require('@electron/packager/dist/icon-composer');
 
 const root = path.join(__dirname, '..');
+// Not in packager's public exports, so load the file by path.
+const { generateAssetCatalogForIcon } = require(path.join(root, 'node_modules/@electron/packager/dist/icon-composer.js'));
 const identity = process.env.GRUB_SIGN_IDENTITY || 'Developer ID Application: Attechy Ltd (NY6MJC8WU5)';
 const entitlements = path.join(root, 'build/entitlements.mac.plist');
 const ARCHES = process.argv[2] ? [process.argv[2]] : ['arm64', 'x64'];
