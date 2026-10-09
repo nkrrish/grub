@@ -14,8 +14,10 @@
 <body>
 <canvas id="c"></canvas>
 <script>
-  const S = Number(new URLSearchParams(location.search).get('scale') || 2);
-  const W = 1200, H = 630;
+  const Q = new URLSearchParams(location.search);
+  const S = Number(Q.get('scale') || 2);
+  // 1200x630 for the website (Open Graph); 1280x640 for GitHub's social preview.
+  const W = Number(Q.get('w') || 1200), H = Number(Q.get('h') || 630);
   const c = document.getElementById('c');
   c.width = W * S; c.height = H * S;
   const g = c.getContext('2d');
@@ -34,9 +36,9 @@
   const fbm = (x, y) => { let v = 0, a = 0.5; for (let i = 0; i < 5; i++) { v += a * noise(x, y); x = x * 2.03 + 1.7; y = y * 2.03 + 9.2; a *= 0.5; } return v; };
 
   // Composition anchors.
-  const GROUND = 500;                 // the scalloped horizon
-  const GX = 892, GSCALE = 4.4;       // grub centre x and scale (mark.svg is a 64-unit box)
-  const CLEAR = { x: GX, y: 382, r: 205 };
+  const GROUND = H - 130;             // the scalloped horizon
+  const GX = W - 308, GSCALE = 4.4;   // grub centre x and scale (mark.svg is a 64-unit box)
+  const CLEAR = { x: GX, y: GROUND - 118, r: 205 };
 
   // Deep earth.
   const bg = g.createLinearGradient(0, 0, 0, H);
@@ -123,7 +125,7 @@
     // The address, set into the soil.
     g.font = '500 22px Fredoka';
     g.fillStyle = 'rgba(243,237,228,0.82)';
-    g.fillText('grub.attechy.com', M, 578);
+    g.fillText('grub.attechy.com', M, H - 52);
     document.title = 'ready';
   });
 </script>
