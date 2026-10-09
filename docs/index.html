@@ -78,6 +78,8 @@
     .brand { display: flex; align-items: center; gap: 10px; font: 600 22px var(--display); text-decoration: none; }
     /* The grub sits low in its icon, so the word drops to meet its eyes rather than the box's centre. */
     .brand-name { transform: translateY(3px); }
+    /* The grub's visual centre is ~3px below its box's, so lift the whole logo to sit level with the nav. */
+    nav .brand { transform: translateY(-3px); }
 
     .nav-links { position: relative; display: flex; align-items: center; gap: 2px; }
     .nav-links a {
