@@ -48,8 +48,8 @@ try { execSync('actool --version', { stdio: 'ignore' }); } catch { hasActool = f
         /^\/scripts/,
         /^\/wrangler\.jsonc$/,
         /^\/\.impeccable/,
-        // DMG window artwork, only used when building the installer.
-        /^\/build\/dmg/,
+        // DMG window artwork and the website share image, never used by the app.
+        /^\/build\/(dmg|og)/,
         /\.md$/,
         // Only mark.svg is used at runtime; the rest of brand/ is source artwork.
         /^\/brand\/(?!mark\.svg$)/,
