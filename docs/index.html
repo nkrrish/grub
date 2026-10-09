@@ -56,41 +56,62 @@
     .i { width: 20px; height: 20px; flex: none; fill: currentColor; }
     .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
 
-    /* ---------- nav ---------- */
-    nav {
-      position: sticky; top: 0; z-index: 10;
-      transition: background-color 200ms ease, border-color 200ms ease;
-      border-bottom: 1px solid transparent;
+    /* ---------- nav: transparent over the hero, a floating frosted bar once you scroll ---------- */
+    nav.top { position: sticky; top: 0; z-index: 10; padding-top: 10px; }
+    .bar {
+      position: relative; display: flex; align-items: center; justify-content: space-between;
+      height: 60px; max-width: 1160px; margin: 0 auto; padding: 0 12px 0 24px;
     }
-    nav.is-stuck {
-      background: rgba(11, 9, 8, 0.8);
-      -webkit-backdrop-filter: saturate(140%) blur(14px);
-      backdrop-filter: saturate(140%) blur(14px);
-      border-bottom-color: var(--panel-2);
+    /* The frosted surface fades and settles in on its own layer, so nothing in the bar reflows. */
+    .bar::before {
+      content: ""; position: absolute; inset: 0 12px; z-index: -1; border-radius: 18px;
+      background: rgba(23, 19, 15, 0.72);
+      -webkit-backdrop-filter: saturate(150%) blur(18px); backdrop-filter: saturate(150%) blur(18px);
+      border: 1px solid rgba(243, 237, 228, 0.08);
+      box-shadow: 0 1px 0 rgba(243, 237, 228, 0.05) inset, 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+      opacity: 0; transform: translateY(-6px) scale(0.985);
+      transition: opacity 240ms ease, transform 320ms var(--ease-out);
     }
-    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    nav.top.is-stuck .bar::before { opacity: 1; transform: none; }
+    nav.top.is-stuck .bar { padding-left: 32px; padding-right: 20px; }
+    .bar { transition: padding 320ms var(--ease-out); }
+    @media (prefers-reduced-transparency: reduce) { .bar::before { background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
     .brand { display: flex; align-items: center; gap: 10px; font: 600 22px var(--display); text-decoration: none; }
     /* The grub sits low in its icon, so the word drops to meet its eyes rather than the box's centre. */
     .brand-name { transform: translateY(3px); }
-    nav .links { display: flex; align-items: center; gap: 4px; }
-    nav .link {
-      height: 36px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 10px;
-      color: var(--muted); text-decoration: none; font: 500 16px var(--display);
-      transition: color 150ms ease, background-color 150ms ease;
+
+    .nav-links { position: relative; display: flex; align-items: center; gap: 2px; }
+    .nav-links a {
+      position: relative; z-index: 1; height: 36px; display: inline-flex; align-items: center; padding: 0 14px;
+      color: var(--muted); text-decoration: none; font: 500 16px var(--display); border-radius: 10px;
+      transition: color 150ms ease;
     }
-    nav .link:hover { color: var(--text); background: var(--panel-2); }
-    nav .sep { width: 1px; height: 20px; background: var(--line); margin: 0 10px 0 8px; }
-    nav .chip {
-      height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px;
+    .nav-links a:hover, .nav-links a[aria-current="true"] { color: var(--text); }
+    /* One pill slides between links to show where you are on the page. */
+    .nav-pill {
+      position: absolute; left: 0; top: 0; height: 36px; width: var(--w, 0); border-radius: 10px;
+      background: var(--panel-2); box-shadow: inset 0 0 0 1px rgba(243, 237, 228, 0.06);
+      transform: translateX(var(--x, 0)); opacity: 0;
+      transition: transform 320ms var(--ease-out), width 320ms var(--ease-out), opacity 200ms ease;
+    }
+    .nav-pill.on { opacity: 1; }
+
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+    .chip {
+      height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 12px;
       font: 600 16px var(--display); text-decoration: none; color: var(--text);
-      background: var(--panel); border: 1px solid var(--line);
+      background: rgba(32, 27, 23, 0.6); border: 1px solid var(--line);
       transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
     }
-    nav .chip:hover { background: var(--panel-2); border-color: #3d352e; }
-    nav .chip:active { transform: scale(0.97); }
-    nav .chip .i { width: 18px; height: 18px; }
-    nav .chip-primary { margin-left: 6px; color: var(--ink); background: var(--rot); border-color: var(--rot); }
-    nav .chip-primary:hover { background: var(--rot-hover); border-color: var(--rot-hover); }
+    .chip:hover { background: var(--panel-2); border-color: #3d352e; }
+    .chip:active { transform: scale(0.97); }
+    .chip .i { width: 18px; height: 18px; }
+    .chip .stars { display: inline-flex; align-items: center; gap: 4px; padding-left: 10px; margin-left: 2px; border-left: 1px solid var(--line); color: var(--muted); font: 500 12px var(--mono); }
+    .chip .stars .i { width: 13px; height: 13px; color: var(--rot); }
+    .chip .stars[hidden] { display: none; }
+    .chip-primary { color: var(--ink); background: var(--rot); border-color: var(--rot); }
+    .chip-primary:hover { background: var(--rot-hover); border-color: var(--rot-hover); }
 
     /* ---------- Grub's face: the app sidebar's hover, press and blink ---------- */
     .grub-face { flex: none; overflow: visible; }
@@ -356,11 +377,42 @@
       background: radial-gradient(circle at 12px 16px, var(--soil) 13px, transparent 13.5px) 0 0 / 24px 16px repeat-x;
     }
 
-    footer { background: var(--soil); color: #e2d6c8; font-size: 12px; padding: 4px 0 48px; }
-    footer .row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-    footer p { margin: 0 0 6px; }
-    footer a { color: #fff7ec; text-decoration-color: rgba(255, 247, 236, 0.4); text-underline-offset: 3px; }
-    footer a:hover { text-decoration-color: var(--rot); }
+    /* ---------- footer: the soil from the burrow, getting deeper as you go down ---------- */
+    footer.ground {
+      position: relative; overflow: hidden; color: #d9ccbc;
+      background: linear-gradient(180deg, var(--soil) 0, #45362a 180px, #2b221b 520px, #1d1712 100%);
+    }
+    .ground-grid { display: grid; grid-template-columns: minmax(0, 5fr) repeat(3, minmax(0, 2fr)); gap: 40px; padding-top: 40px; padding-bottom: 64px; position: relative; z-index: 1; }
+    .ground-brand .brand { color: #fff7ec; }
+    .ground-brand p { margin: 16px 0 0; max-width: 32ch; color: #d9ccbc; }
+    .notarized { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(20, 17, 15, 0.28); border: 1px solid rgba(243, 237, 228, 0.1); font-size: 12px; color: #e9dfd2; }
+    .notarized .i { width: 16px; height: 16px; color: var(--rot); }
+    .ground h4 { margin: 4px 0 16px; font: 600 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #b3a38f; }
+    .ground ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+    .ground ul a, .ground-base a {
+      position: relative; color: #f3ede4; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    }
+    /* Links underline from the left on hover instead of always carrying a line. */
+    .ground ul a::after, .ground-base a::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; background: var(--rot);
+      transform: scaleX(0); transform-origin: left; transition: transform 240ms var(--ease-out);
+    }
+    .ground ul a:hover::after, .ground-base a:hover::after { transform: scaleX(1); }
+    .ground ul a small { color: #b3a38f; font-size: 12px; }
+    .ground-base {
+      position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding-top: 20px; padding-bottom: 28px; border-top: 1px solid rgba(243, 237, 228, 0.1); font-size: 12px; color: #b3a38f;
+    }
+    .ground-base p { margin: 0; }
+    .ground-base a .i { width: 14px; height: 14px; transition: transform 200ms var(--ease-out); }
+    .ground-base a:hover .i { transform: translateY(-2px); }
+    /* The name pressed into the earth: big, quiet, cut off by the bottom edge. */
+    .ground-word {
+      position: relative; z-index: 0; margin: -0.18em 0 -0.32em; text-align: center; pointer-events: none; user-select: none;
+      font: 700 clamp(120px, 27vw, 380px)/1 var(--display); letter-spacing: -0.02em;
+      color: transparent; background: linear-gradient(180deg, rgba(243, 237, 228, 0.07), rgba(243, 237, 228, 0.015) 70%);
+      -webkit-background-clip: text; background-clip: text;
+    }
 
     /* ---------- responsive ---------- */
     @media (max-width: 960px) {
@@ -381,6 +433,8 @@
       .flow { grid-template-columns: 1fr 1fr; gap: 40px 24px; }
       .flow::before { display: none; }
       .install { grid-template-columns: 1fr; }
+      .ground-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ground-brand { grid-column: 1 / -1; }
     }
     @media (max-width: 640px) {
       .wrap { padding: 0 16px; }
@@ -399,6 +453,11 @@
       .care-list { grid-template-columns: 1fr; gap: 28px; }
       .flow { grid-template-columns: 1fr; }
       .card { padding: 24px; }
+      .bar { padding: 0 4px 0 12px; }
+      nav.top.is-stuck .bar { padding: 0 12px 0 20px; }
+      .bar::before { inset: 0 6px; }
+      .ground-grid { grid-template-columns: 1fr 1fr; gap: 32px 24px; }
+      .ground-base { flex-direction: column; align-items: flex-start; }
     }
 
     /* Reduced motion: keep the fades that explain the page, drop the movement. */
@@ -414,6 +473,8 @@
       .tm { animation-name: fade; }
       .peek svg, .burrow.in .peek svg, .burrow.in .peek.up svg { transition: none; transform: translate(-50%, 4%); }
       .grub-face * { transition: none !important; }
+      .bar::before, .bar, .nav-pill { transition: opacity 200ms ease; }
+      .bar::before { transform: none; }
       @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
     }
   </style>
@@ -456,11 +517,14 @@
     <symbol id="i-shield-check" viewBox="0 0 256 256"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
     <symbol id="i-terminal-window" viewBox="0 0 256 256"><path d="M128,128a8,8,0,0,1-3,6.25l-40,32a8,8,0,1,1-10-12.5L107.19,128,75,102.25a8,8,0,1,1,10-12.5l40,32A8,8,0,0,1,128,128Zm48,24H136a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm56-96V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Z"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 256 256"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 256 256"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></symbol>
+    <symbol id="i-bug" viewBox="0 0 256 256"><path d="M144,92a12,12,0,1,1,12,12A12,12,0,0,1,144,92ZM100,80a12,12,0,1,0,12,12A12,12,0,0,0,100,80Zm116,64A87.76,87.76,0,0,1,213,167l22.24,9.72A8,8,0,0,1,232,192a7.89,7.89,0,0,1-3.2-.67L207.38,182a88,88,0,0,1-158.76,0L27.2,191.33A7.89,7.89,0,0,1,24,192a8,8,0,0,1-3.2-15.33L43,167A87.76,87.76,0,0,1,40,144v-8H16a8,8,0,0,1,0-16H40v-8a87.76,87.76,0,0,1,3-23L20.8,79.33a8,8,0,1,1,6.4-14.66L48.62,74a88,88,0,0,1,158.76,0l21.42-9.36a8,8,0,0,1,6.4,14.66L213,89.05a87.76,87.76,0,0,1,3,23v8h24a8,8,0,0,1,0,16H216ZM56,120H200v-8a72,72,0,0,0-144,0Zm64,95.54V136H56v8A72.08,72.08,0,0,0,120,215.54ZM200,144v-8H136v79.54A72.08,72.08,0,0,0,200,144Z"/></symbol>
   </svg>
 
-  <nav id="nav">
-    <div class="wrap">
-      <a class="brand" href="./">
+  <nav class="top" id="nav" aria-label="Main">
+    <div class="bar">
+      <a class="brand" href="#" aria-label="Grub, back to top">
         <svg class="grub-face brand-face" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true">
           <defs><clipPath id="hole-nav"><rect x="0" y="-12" width="64" height="65"/></clipPath></defs>
           <g clip-path="url(#hole-nav)">
@@ -477,14 +541,17 @@
         </svg>
         <span class="brand-name">Grub</span>
       </a>
-      <div class="links">
-        <a class="link hide-sm" href="#chores">Chores</a>
-        <a class="link hide-sm" href="#screens">Screens</a>
-        <a class="link hide-sm" href="#install">Install</a>
-        <span class="sep hide-sm" aria-hidden="true"></span>
+      <div class="nav-links hide-sm" id="nav-links">
+        <span class="nav-pill" id="nav-pill" aria-hidden="true"></span>
+        <a href="#chores">Chores</a>
+        <a href="#screens">Screens</a>
+        <a href="#install">Install</a>
+      </div>
+      <div class="nav-actions">
         <a class="chip" href="https://github.com/nkrrish/grub" aria-label="Grub on GitHub">
           <svg class="i" aria-hidden="true"><use href="#i-github-logo"/></svg>
           <span class="hide-sm">GitHub</span>
+          <span class="stars" data-stars hidden><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><span></span></span>
         </a>
         <a class="chip chip-primary" href="/download">
           <svg class="i" aria-hidden="true"><use href="#i-download-simple"/></svg>
@@ -802,17 +869,61 @@ cd grub && npm install && npm start</pre>
     </div>
   </div>
 
-  <footer>
-    <div class="wrap row">
-      <div>
-        <p>Made by <a href="https://naguleskrrish.com/">Nagules Krrish</a> at <a href="https://attechy.com/">Attechy</a>.</p>
-        <p>Free software under the <a href="https://github.com/nkrrish/grub/blob/main/LICENSE">GPL-3.0</a>.</p>
+  <footer class="ground">
+    <div class="wrap ground-grid">
+      <div class="ground-brand">
+        <a class="brand" href="#" aria-label="Grub, back to top">
+        <svg class="grub-face foot-face" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true">
+          <defs><clipPath id="hole-foot"><rect x="0" y="-12" width="64" height="65"/></clipPath></defs>
+          <g clip-path="url(#hole-foot)">
+            <g class="gf-head">
+              <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
+              <circle class="gf-eye" cx="24.5" cy="33" r="2.7" fill="#14110F"/>
+              <path class="gf-x" d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
+              <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
+              <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+              <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+            </g>
+          </g>
+          <path d="M4 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 12 0v8H4z" fill="#5B4636"/>
+        </svg>
+        <span class="brand-name">Grub</span>
+      </a>
+        <p>It eats your junk. A free, open-source Mac cleaner for macOS 12 and later.</p>
+        <span class="notarized"><svg class="i" aria-hidden="true"><use href="#i-seal-check"/></svg>Signed and notarized by Apple</span>
       </div>
       <div>
-        <p>Core cleaning uses <a href="https://github.com/tw93/Mole">Mole</a> by tw93.</p>
-        <p>Grub isn't affiliated with Mole.</p>
+        <h4>Grub</h4>
+        <ul>
+          <li><a href="#chores">Chores</a></li>
+          <li><a href="#screens">Screens</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="/download">Download</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Open source</h4>
+        <ul>
+          <li><a href="https://github.com/nkrrish/grub">Source code<span class="stars" data-stars hidden><small></small></span></a></li>
+          <li><a href="https://github.com/nkrrish/grub/releases">Releases</a></li>
+          <li><a href="https://github.com/nkrrish/grub/issues/new">Report a bug</a></li>
+          <li><a href="https://github.com/nkrrish/grub/blob/main/LICENSE">GPL-3.0 licence</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Made by</h4>
+        <ul>
+          <li><a href="https://naguleskrrish.com/">Nagules Krrish</a></li>
+          <li><a href="https://attechy.com/">Attechy</a></li>
+          <li><a href="https://github.com/tw93/Mole">Mole <small>the engine, by tw93</small></a></li>
+        </ul>
       </div>
     </div>
+    <div class="wrap ground-base">
+      <p>&copy; 2026 Nagules Krrish. Grub isn't affiliated with Mole.</p>
+      <a href="#">Back to top<svg class="i" aria-hidden="true"><use href="#i-arrow-up"/></svg></a>
+    </div>
+    <div class="ground-word" aria-hidden="true">Grub</div>
   </footer>
 
   <script>
@@ -831,12 +942,46 @@ cd grub && npm install && npm start</pre>
       schedule();
     })();
 
-    // Nav gets a backdrop once the page has scrolled under it. A sentinel avoids a scroll listener.
+    // Nav turns into a floating bar once the page has scrolled under it. A sentinel avoids a scroll listener.
     const nav = document.getElementById('nav');
     const sentinel = document.createElement('div');
     sentinel.style.cssText = 'position:absolute;top:8px;height:1px;width:1px';
     document.body.prepend(sentinel);
     new IntersectionObserver(([e]) => nav.classList.toggle('is-stuck', !e.isIntersecting)).observe(sentinel);
+
+    // A pill slides to the nav link for the section you're reading.
+    const pill = document.getElementById('nav-pill');
+    const navLinks = [...document.querySelectorAll('#nav-links a')];
+    const placePill = (a) => {
+      navLinks.forEach((l) => l.toggleAttribute('aria-current', l === a));
+      if (!a) return pill.classList.remove('on');
+      pill.style.setProperty('--x', `${a.offsetLeft}px`);
+      pill.style.setProperty('--w', `${a.offsetWidth}px`);
+      pill.classList.add('on');
+    };
+    const sections = navLinks.map((a) => document.querySelector(a.getAttribute('href')));
+    const visible = new Set();
+    const spy = new IntersectionObserver((entries) => {
+      entries.forEach((e) => (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)));
+      const current = sections.find((sec) => visible.has(sec));
+      placePill(current ? navLinks[sections.indexOf(current)] : null);
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach((sec) => spy.observe(sec));
+    addEventListener('resize', () => placePill(navLinks.find((a) => a.hasAttribute('aria-current'))));
+
+    // GitHub stars, shown once there are enough to mean something. Silent if the API is unavailable.
+    fetch('https://api.github.com/repos/nkrrish/grub')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((repo) => {
+        const n = repo?.stargazers_count;
+        if (!(n >= 10)) return;
+        const label = n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+        document.querySelectorAll('[data-stars]').forEach((el) => {
+          el.lastElementChild.textContent = el.closest('footer') ? ` ${label} stars` : label;
+          el.hidden = false;
+        });
+      })
+      .catch(() => {});
 
     // Reveal sections as they come into view, once.
     const io = new IntersectionObserver((entries) => {
