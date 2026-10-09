@@ -4,8 +4,7 @@
 #   xcrun notarytool store-credentials grub --apple-id <id> --team-id NY6MJC8WU5
 set -e
 cd "$(dirname "$0")/.."
-VERSION=$(node -p "require('./package.json').version")
-DMG="out/Grub-$VERSION-universal.dmg"
+DMG="out/Grub.dmg"
 IDENTITY="${GRUB_SIGN_IDENTITY:-Developer ID Application: Attechy Ltd (NY6MJC8WU5)}"
 PROFILE="${GRUB_NOTARY_PROFILE:-grub}"
 codesign --force --timestamp --sign "$IDENTITY" "$DMG"

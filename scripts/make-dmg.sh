@@ -2,10 +2,9 @@
 # Wraps the universal Grub.app in a compressed DMG with an Applications shortcut.
 set -e
 cd "$(dirname "$0")/.."
-VERSION=$(node -p "require('./package.json').version")
 APP="out/Grub-darwin-universal/Grub.app"
 STAGE="out/dmg-stage"
-DMG="out/Grub-$VERSION-universal.dmg"
+DMG="out/Grub.dmg"
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
