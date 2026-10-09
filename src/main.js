@@ -59,11 +59,25 @@ function broadcast(channel, value) {
   for (const w of [win, popover]) if (w && !w.isDestroyed()) w.webContents.send(channel, value);
 }
 
+// Someone is looking: the window or the popover is on screen.
+const watched = () => [win, popover].some((w) => w && !w.isDestroyed() && w.isVisible());
+
+// Full speed while someone is looking. Otherwise only the menu bar needs readings: a few seconds apart
+// for CPU or memory, and rarely for free disk (or nothing at all, but checkups still read the latest one).
+function sampleEvery() {
+  if (watched()) return 2;
+  const items = readSettings().menuBarItems || [];
+  return items.includes('cpu') || items.includes('memory') ? 5 : 30;
+}
+
+let watcherEvery = 0;
+
 function startWatcher() {
   if (watcher) return;
-  watcher = spawn(mo(), ['status', '--watch', '--interval', '2s'], { env: ENV, cwd: HOME });
+  watcherEvery = sampleEvery();
+  const current = (watcher = spawn(mo(), ['status', '--watch', '--interval', `${watcherEvery}s`], { env: ENV, cwd: HOME }));
   let buf = '';
-  watcher.stdout.on('data', (chunk) => {
+  current.stdout.on('data', (chunk) => {
     buf += chunk;
     let i;
     while ((i = buf.indexOf('\n')) >= 0) {
@@ -75,19 +89,40 @@ function startWatcher() {
       } catch {
         continue;
       }
-      nameProcesses(lastStatus).then((st) => {
-        if (st !== lastStatus) return; // a newer snapshot arrived meanwhile
-        // hidden windows skip the redraw; they get the newest reading when they're shown
-        for (const w of [win, popover]) if (w && !w.isDestroyed() && w.isVisible()) w.webContents.send('status', st);
-        updateTrayTitle(st);
-      });
+      updateTrayTitle(lastStatus);
+      // naming the hungriest apps means a full process list, so it's only done for someone looking
+      if (watched()) sendStatus(lastStatus);
+      // window events can be missed when they come close together; each reading checks the pace too
+      if (sampleEvery() !== watcherEvery) retuneWatcher();
     }
   });
-  watcher.on('exit', () => {
+  current.on('exit', () => {
+    if (watcher !== current) return; // replaced on purpose
     watcher = null;
     setTimeout(startWatcher, 5000);
   });
-  watcher.on('error', () => {});
+  current.on('error', () => {});
+}
+
+// Called when a window opens or closes, or the menu bar picks change. Waits a beat, since clicking
+// "Open Grub" hides the popover and shows the window in one go.
+let retuneTimer;
+function retuneWatcher() {
+  clearTimeout(retuneTimer);
+  retuneTimer = setTimeout(() => {
+    if (!watcher || sampleEvery() === watcherEvery) return;
+    const old = watcher;
+    watcher = null;
+    old.kill();
+    startWatcher();
+  }, 300);
+}
+
+function sendStatus(raw) {
+  nameProcesses(raw).then((st) => {
+    if (st !== lastStatus) return; // a newer snapshot arrived meanwhile
+    for (const w of [win, popover]) if (w && !w.isDestroyed() && w.isVisible()) w.webContents.send('status', st);
+  });
 }
 
 // Plain names for the system processes people actually see at the top.
@@ -396,10 +431,7 @@ const scheduler = createScheduler({
   notify: (report) => {
     if (report.trigger !== 'schedule' || !Notification.isSupported()) return;
     const n = new Notification({ title: "Grub's checkup is in", body: reportHeadline(report), silent: true });
-    n.on('click', () => {
-      showWindow();
-      win.webContents.send('navigate', 'schedule');
-    });
+    n.on('click', () => sendToWindow('navigate', 'schedule'));
     n.show();
   },
 });
@@ -514,7 +546,10 @@ ipcMain.handle('settings:set', (_e, patch) => {
   const { openAtLogin: _ignored, ...rest } = patch;
   const next = writeSettings(rest);
   broadcast('settings', next);
-  if ('menuBarItems' in patch && lastStatus) updateTrayTitle(lastStatus);
+  if ('menuBarItems' in patch) {
+    if (lastStatus) updateTrayTitle(lastStatus);
+    retuneWatcher();
+  }
   return { ...next, openAtLogin: app.getLoginItemSettings().openAtLogin };
 });
 
@@ -632,13 +667,12 @@ ipcMain.on('status:start', startWatcher);
 // menu bar popover actions
 ipcMain.on('app:open', (_e, view) => {
   popover?.hide();
-  showWindow();
-  if (view) win.webContents.send('navigate', view);
+  if (view) sendToWindow('navigate', view);
+  else showWindow();
 });
 ipcMain.on('app:run', (_e, opts) => {
   popover?.hide();
-  showWindow();
-  win.webContents.send('run', opts);
+  sendToWindow('run', opts);
 });
 ipcMain.on('app:quit', () => app.quit());
 
@@ -658,7 +692,17 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  win.on('show', () => lastStatus && win.webContents.send('status', lastStatus));
+  // the newest reading straight away, then full-speed readings while it's open
+  win.on('show', () => {
+    clearTimeout(freeWindowTimer);
+    if (lastStatus) sendStatus(lastStatus);
+    retuneWatcher();
+  });
+  win.on('hide', () => {
+    retuneWatcher();
+    scheduleFreeWindow();
+  });
+  win.on('closed', () => (win = null));
   // closing the window keeps Grub in the menu bar
   win.on('close', (e) => {
     if (app.isQuitting) return;
@@ -667,10 +711,32 @@ function createWindow() {
   });
 }
 
+// A window closed for a while is let go, which frees its page (tens of MB); opening Grub builds it again.
+// Never while a chore runs, since the window is the one driving it.
+const FREE_AFTER = 10 * 60 * 1000;
+let freeWindowTimer;
+
+function scheduleFreeWindow() {
+  clearTimeout(freeWindowTimer);
+  freeWindowTimer = setTimeout(() => {
+    if (!win || win.isDestroyed() || win.isVisible()) return;
+    if (session) return scheduleFreeWindow();
+    win.destroy();
+  }, FREE_AFTER);
+}
+
 function showWindow() {
   if (!win || win.isDestroyed()) createWindow();
   win.show();
   win.focus();
+}
+
+// Sends to the window once its page is ready, which takes a moment when it's just been rebuilt.
+function sendToWindow(channel, value) {
+  showWindow();
+  const wc = win.webContents;
+  if (wc.isLoading()) wc.once('did-finish-load', () => wc.send(channel, value));
+  else wc.send(channel, value);
 }
 
 function createTray() {
@@ -698,7 +764,11 @@ function createTray() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   popover.loadFile(path.join(__dirname, 'renderer', 'tray.html'));
-  popover.on('show', () => lastStatus && popover.webContents.send('status', lastStatus));
+  popover.on('show', () => {
+    if (lastStatus) sendStatus(lastStatus);
+    retuneWatcher();
+  });
+  popover.on('hide', retuneWatcher);
   popover.on('blur', () => popover.hide());
 }
 
