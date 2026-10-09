@@ -42,6 +42,7 @@ try { execSync('actool --version', { stdio: 'ignore' }); } catch { hasActool = f
       /^\/out/,
       /^\/docs/,
       /^\/wrangler\.jsonc$/,
+      /^\/\.impeccable/,
       /\.md$/,
       // Only mark.svg is used at runtime; the rest of brand/ is source artwork.
       /^\/brand\/(?!mark\.svg$)/,

@@ -64,12 +64,12 @@
     nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .brand { display: flex; align-items: center; gap: 10px; font: 600 20px var(--display); text-decoration: none; }
     .brand img { width: 30px; height: 30px; }
-    nav .links { display: flex; align-items: center; gap: 22px; font-size: 13px; }
+    nav .links { display: flex; align-items: center; gap: 22px; font-size: 16px; }
     nav .links a { color: var(--muted); text-decoration: none; transition: color 150ms ease; }
     nav .links a:hover { color: var(--text); }
     nav .links .btn-sm {
-      color: var(--ink); background: var(--rot); padding: 7px 14px; border-radius: 10px;
-      font: 600 13px var(--display);
+      color: var(--ink); background: var(--rot); padding: 6px 14px; border-radius: 10px;
+      font: 600 16px var(--display);
       transition: transform 160ms var(--ease-out), background-color 150ms ease;
     }
     nav .links .btn-sm:hover { color: var(--ink); background: #c6ee62; }
@@ -140,7 +140,7 @@
     h1 em { font-style: normal; color: var(--rot); }
     .lede { max-width: 620px; margin: 22px auto 0; color: var(--muted); font-size: 20px; }
     .cta { margin-top: 34px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .meta { margin-top: 16px; color: var(--muted); font-size: 13px; }
+    .meta { margin-top: 16px; color: var(--muted); font-size: 12px; }
 
     /* Load sequence: the grub pops up first, then the words land under it. */
     .hero .seq { animation: land 700ms var(--ease-out) both; }
@@ -166,7 +166,7 @@
 
     /* ---------- sections ---------- */
     section { padding: 112px 0; }
-    .eyebrow { font: 600 13px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--rot); margin: 0 0 12px; }
+    .eyebrow { font: 600 12px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--rot); margin: 0 0 12px; }
     h2 { font: 600 clamp(32px, 5vw, 48px)/1.08 var(--display); margin: 0 0 14px; }
     .sub { color: var(--muted); margin: 0 0 44px; max-width: 620px; }
     .center { text-align: center; }
@@ -222,7 +222,7 @@
     .trust .card { display: flex; gap: 16px; align-items: flex-start; }
     .trust .card h3 { margin-top: 0; }
     .trust .dot { flex: none; background: rgba(244, 167, 176, 0.12); color: var(--nose); }
-    code { font: 13px var(--mono); color: var(--text); }
+    code { font: 12px var(--mono); color: var(--text); }
 
     /* ---------- install ---------- */
     .install { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left; }
@@ -232,11 +232,11 @@
     ol.steps li b { color: var(--text); font-weight: 600; }
     ol.steps li::before {
       content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
-      display: grid; place-items: center; background: var(--panel-2); color: var(--rot); font: 600 13px var(--display);
+      display: grid; place-items: center; background: var(--panel-2); color: var(--rot); font: 600 12px var(--display);
     }
     pre {
       margin: 12px 0 0; padding: 14px 16px; border-radius: 12px; background: #0f0d0b; border: 1px solid var(--panel-2);
-      font: 13px/1.6 var(--mono); color: var(--text); overflow-x: auto;
+      font: 12px/1.6 var(--mono); color: var(--text); overflow-x: auto;
     }
     pre .c { color: var(--muted); }
 
@@ -256,7 +256,7 @@
       background: radial-gradient(circle at 12px 16px, var(--soil) 13px, transparent 13.5px) 0 0 / 24px 16px repeat-x;
     }
 
-    footer { background: var(--soil); color: #e2d6c8; font-size: 13px; padding: 4px 0 48px; }
+    footer { background: var(--soil); color: #e2d6c8; font-size: 12px; padding: 4px 0 48px; }
     footer .row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
     footer p { margin: 0 0 6px; }
     footer a { color: #fff7ec; text-decoration-color: rgba(255, 247, 236, 0.4); text-underline-offset: 3px; }
