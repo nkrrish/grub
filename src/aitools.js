@@ -28,7 +28,8 @@ const P = {
 // packages it already installed, Squirrel (ShipIt) keeps a staged update until the app next quits.
 const CACHES = path.join(HOME, 'Library/Caches');
 const APP_UPDATES = [
-  { tool: 'codex', app: 'Codex', bundle: 'com.openai.codex' },
+  // com.openai.codex is the ChatGPT app now, which hosts Codex; older installs still have Codex.app
+  { tool: 'codex', app: 'ChatGPT', apps: ['ChatGPT', 'Codex'], bundle: 'com.openai.codex' },
   { tool: 'chatgpt', app: 'ChatGPT', bundle: 'com.openai.chat' },
   { tool: 'claude', app: 'Claude', bundle: 'com.anthropic.claudefordesktop' },
   { tool: 'cursor', app: 'Cursor', bundle: 'com.todesktop.230313mzl4w4u92' },
@@ -188,8 +189,8 @@ function caches(running) {
 // Left alone while the app (or its updater, which lives inside it) is running, since it may be mid-update.
 function appUpdates(procs) {
   const items = [];
-  for (const { tool, app, bundle } of APP_UPDATES) {
-    const open = procs.some((p) => p.includes(`/${app}.app/Contents/`));
+  for (const { tool, app, apps = [app], bundle } of APP_UPDATES) {
+    const open = procs.some((p) => apps.some((a) => p.includes(`/${a}.app/Contents/`)));
     const blocked = open && `Quit ${app} first`;
     const sparkle = path.join(CACHES, bundle, 'org.sparkle-project.Sparkle');
     const sparkleFiles = ls(sparkle).map((f) => path.join(sparkle, f));
@@ -204,6 +205,15 @@ function appUpdates(procs) {
     }
   }
   return items;
+}
+
+/* ---------- Codex after it's uninstalled ---------- */
+
+// Everything Codex keeps in ~/.codex (sessions, its list of them, settings and sign-in) only shows up once
+// Codex itself is gone, as one item, so nothing is left half-removed. Never ticked: it's a choice to make.
+function codexLeftovers() {
+  if (!exists(P.codex)) return [];
+  return [{ id: idFor('leftovers', 'codex'), tool: 'codex', group: 'cache', kind: 'codex-leftovers', name: 'Everything Codex left behind', sub: 'Codex isn’t installed. Its sessions, settings and sign-in, all to the Trash', paths: [P.codex], on: false }];
 }
 
 /* ---------- Claude Code sessions ---------- */
@@ -239,7 +249,7 @@ function textOf(content) {
 }
 
 // First thing a person typed, not the tool's own wrappers.
-const isHuman = (t) => t && !/^\s*</.test(t) && !/^Caveat:/.test(t);
+const isHuman = (t) => t && !/^\s*</.test(t) && !/^Caveat:/.test(t) && !/^\s*#\s*(AGENTS|CLAUDE)\.md instructions/i.test(t);
 const tidyTitle = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 90);
 
 function claudeSession(file) {
@@ -316,13 +326,25 @@ function claudeSessions(retentionDays) {
 /* ---------- Codex sessions ---------- */
 
 // Codex's own delete command keeps its session list in step; Grub never edits Codex's database.
+// Wherever Codex lives: inside the ChatGPT app now, or as a command from Homebrew, npm, bun and friends.
+// Apps opened from Finder get a bare PATH, so the usual install spots are checked by hand too.
 function codexBin() {
+  const nvm = path.join(HOME, '.nvm/versions/node');
   return [
+    // Codex now ships inside the ChatGPT app
+    '/Applications/ChatGPT.app/Contents/Resources/codex',
+    path.join(HOME, 'Applications/ChatGPT.app/Contents/Resources/codex'),
     '/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex',
     '/Applications/Codex.app/Contents/Resources/codex',
     path.join(HOME, '.local/bin/codex'),
     '/opt/homebrew/bin/codex',
     '/usr/local/bin/codex',
+    path.join(HOME, '.npm-global/bin/codex'),
+    path.join(HOME, '.bun/bin/codex'),
+    path.join(HOME, '.volta/bin/codex'),
+    path.join(HOME, 'Library/pnpm/codex'),
+    ...ls(nvm).map((v) => path.join(nvm, v, 'bin/codex')),
+    ...(process.env.PATH || '').split(':').filter(Boolean).map((d) => path.join(d, 'codex')),
   ].find(exists);
 }
 
@@ -349,8 +371,9 @@ function codexSessions(retentionDays) {
             }
             if (!title && o.type === 'event_msg' && o.payload?.type === 'user_message' && isHuman(o.payload.message)) title = o.payload.message;
             if (!title && o.payload?.type === 'message' && o.payload.role === 'user') {
-              const t = textOf(o.payload.content);
-              if (isHuman(t)) title = t;
+              // one message can hold Codex's injected instructions first and the person's words after
+              const parts = Array.isArray(o.payload.content) ? o.payload.content.map((c) => textOf([c])) : [textOf(o.payload.content)];
+              title = parts.find(isHuman) || null;
             }
           }
         } catch {}
@@ -470,9 +493,11 @@ async function scan(settings = {}) {
         } catch {}
   }
 
+  // With Codex installed, sessions go through `codex delete` so its own list stays right. Without it nothing
+  // reads that list any more, so the session file just goes to the Trash.
   const hasCodex = !!codexBin();
   const codex = codexSessions(retention.codex).map((s) =>
-    !s.threadId ? { ...s, blocked: 'No session id inside' } : hasCodex ? s : { ...s, blocked: 'Codex isn’t installed to delete it' }
+    hasCodex && s.threadId ? s : { ...s, kind: 'trash', sub: [s.sub, hasCodex ? null : 'Codex isn’t installed, so the file goes to the Trash'].filter(Boolean).join(' · ') }
   );
 
   const items = [
@@ -484,6 +509,7 @@ async function scan(settings = {}) {
     ...codex,
     ...(await worktrees(cwds, recentCwds)),
     ...(await opencodeCompaction(running)),
+    ...(hasCodex || running.codex ? [] : codexLeftovers()),
   ];
 
   const measured = await sizes([...new Set(items.filter((i) => i.bytes == null).flatMap((i) => i.paths))]);
@@ -551,6 +577,13 @@ async function cleanOne(item, running) {
     // no --force: git refuses if anything is left that it would lose
     const r = await git(item.repo, 'worktree', 'remove', wt);
     if (r.err) throw new Error(r.stderr.trim() || 'git would not remove it');
+    return;
+  }
+  if (item.kind === 'codex-leftovers') {
+    // checked again now: if Codex came back since the scan, its data stays
+    if (codexBin() || runningTools(await processes()).codex) throw new Error('Codex is installed again, so its data stays');
+    if (path.resolve(item.paths[0]) !== P.codex) throw new Error('Not Codex’s folder');
+    if (exists(P.codex)) await shell.trashItem(P.codex);
     return;
   }
   if (item.kind === 'vacuum') {

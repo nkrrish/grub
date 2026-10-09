@@ -2841,7 +2841,8 @@ body.ask-open .scrim {
   opacity: 0.55;
 }
 
-#view-ai.is-active {
+#view-ai.is-active,
+#view-sweep.is-active {
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -2869,6 +2870,48 @@ body.ask-open .scrim {
 .ai-bar-note {
   color: var(--muted);
   font-size: 13px;
+}
+
+/* ---------- big clean ---------- */
+
+.sweep-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 0;
+  margin-bottom: 14px;
+}
+
+.sweep-card:empty {
+  display: none;
+}
+
+.sweep-card-text {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sweep-card-title {
+  font: 600 22px/1.2 'Fredoka Variable', sans-serif;
+}
+
+.sweep-card .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.sweep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sweep-result {
+  margin-bottom: 12px;
 }
 
 /* ---------- schedule ---------- */

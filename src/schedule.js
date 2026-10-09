@@ -131,6 +131,36 @@ function field(summary, re) {
 
 /* ---------- the runner ---------- */
 
+// .dmg, .pkg and friends left in the usual download spots, biggest first. Shared with the big clean.
+const INSTALLER_EXT = /\.(dmg|pkg|mpkg|iso|xip)$/i;
+
+function findInstallers(home) {
+  const dirs = ['Downloads', 'Desktop', 'Documents', 'Library/Downloads'].map((d) => path.join(home, d)).concat(['/Users/Shared']);
+  const out = [];
+  const walk = (dir, depth) => {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue;
+      const p = path.join(dir, e.name);
+      if (e.isSymbolicLink()) continue;
+      if (e.isDirectory() && !e.name.endsWith('.app') && depth < 2) walk(p, depth + 1);
+      else if (e.isFile() && INSTALLER_EXT.test(e.name)) {
+        try {
+          const st = fs.statSync(p);
+          out.push({ path: p, name: e.name, size: st.size, age: (Date.now() - st.mtimeMs) / 864e5 });
+        } catch {}
+      }
+    }
+  };
+  dirs.forEach((d) => walk(d, 1));
+  return out.sort((a, b) => b.size - a.size);
+}
+
 function createScheduler({ app, env, mo, brew, home, notify, onChange, isBusy, readStatus }) {
   const FILE = () => path.join(app.getPath('userData'), 'schedule.json');
   let state = load();
@@ -274,37 +304,8 @@ function createScheduler({ app, env, mo, brew, home, notify, onChange, isBusy, r
     };
   }
 
-  const INSTALLER_DIRS = ['Downloads', 'Desktop', 'Documents', 'Library/Downloads'].map((d) => path.join(home, d)).concat(['/Users/Shared']);
-  const INSTALLER_EXT = /\.(dmg|pkg|mpkg|iso|xip)$/i;
-
-  function findInstallers() {
-    const out = [];
-    const walk = (dir, depth) => {
-      let entries = [];
-      try {
-        entries = fs.readdirSync(dir, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      for (const e of entries) {
-        if (e.name.startsWith('.')) continue;
-        const p = path.join(dir, e.name);
-        if (e.isSymbolicLink()) continue;
-        if (e.isDirectory() && !e.name.endsWith('.app') && depth < 2) walk(p, depth + 1);
-        else if (e.isFile() && INSTALLER_EXT.test(e.name)) {
-          try {
-            const st = fs.statSync(p);
-            out.push({ path: p, name: e.name, size: st.size, age: (Date.now() - st.mtimeMs) / 864e5 });
-          } catch {}
-        }
-      }
-    };
-    INSTALLER_DIRS.forEach((d) => walk(d, 1));
-    return out.sort((a, b) => b.size - a.size);
-  }
-
   async function doInstallers(auto) {
-    const all = findInstallers();
+    const all = findInstallers(home);
     if (!auto) {
       return {
         ok: true,
@@ -518,4 +519,4 @@ function sanitizeCadence(c) {
   return { freq, weekday, monthday, time };
 }
 
-module.exports = { createScheduler, nextRun, prevRun };
+module.exports = { createScheduler, nextRun, prevRun, findInstallers, INSTALLER_AGE_DAYS, readMole, toLines, parseSize, field };

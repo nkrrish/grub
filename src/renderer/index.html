@@ -121,6 +121,8 @@
             <p class="lede" id="burrow-lede">Reading your Mac's vitals. Hold your nose.</p>
           </header>
 
+          <div class="card sweep-card" id="sweep-card" aria-live="polite"></div>
+
           <div class="grid">
             <div class="card card-health">
               <div class="ring" id="health-ring" style="--p: 0">
@@ -293,6 +295,22 @@
           <div class="ai-bar">
             <span class="ai-bar-note" id="ai-bar-note"></span>
             <button class="btn btn-primary" id="ai-go" disabled>Pick something</button>
+          </div>
+        </section>
+
+        <!-- BIG CLEAN -->
+        <section class="view" id="view-sweep">
+          <div class="ai-scroll">
+          <header class="view-head">
+            <p class="eyebrow">Big clean</p>
+            <h1 id="sweep-title">See what Grub can clear.</h1>
+            <p class="lede">Every look Grub takes, in one list: caches and logs, old build junk, installers and AI tools. Untick anything you want to keep, then Grub does the lot without stopping to ask.</p>
+          </header>
+          <div id="sweep-body"></div>
+          </div>
+          <div class="ai-bar">
+            <span class="ai-bar-note" id="sweep-bar-note"></span>
+            <button class="btn btn-primary" id="sweep-go" disabled>Pick something</button>
           </div>
         </section>
 
@@ -493,6 +511,10 @@
         <button class="switch" role="switch" id="about-auto" aria-checked="true" aria-label="Update Mole automatically"></button>
       </div>
       <div class="pref">
+        <div><b>Keep an eye out</b><span>A heads-up when space or memory runs low, and a quiet daily look for space to clear.</span></div>
+        <button class="switch" role="switch" id="about-alerts" aria-checked="true" aria-label="Keep an eye out"></button>
+      </div>
+      <div class="pref">
         <div><b>Open Grub at login</b><span>Stays in the menu bar.</span></div>
         <button class="switch" role="switch" id="about-login" aria-checked="false" aria-label="Open Grub at login"></button>
       </div>
@@ -514,5 +536,6 @@
     <script src="runner.js"></script>
     <script src="aitools.js"></script>
     <script src="schedule.js"></script>
+    <script src="sweep.js"></script>
   </body>
 </html>

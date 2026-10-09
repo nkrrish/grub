@@ -193,6 +193,14 @@ function isRunHome(view, chore) {
 }
 
 async function runTask(opts) {
+  // the big clean drives Mole too; two at once would trip over each other
+  if (['scanning', 'running'].includes(sweep?.state?.phase)) {
+    return ask({
+      title: "Grub's mouth is full",
+      body: 'The big clean is still going. This can start once it’s done.',
+      buttons: [{ label: 'OK', value: 'ok', primary: true }],
+    });
+  }
   if (run && !run.exited) {
     const v = await ask({
       title: "Grub's mouth is full",

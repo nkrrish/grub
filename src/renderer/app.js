@@ -217,6 +217,7 @@ function show(view, chore) {
     else setFreshness('evict-fresh', appsAt);
   }
   if (view === 'history') loadHistory();
+  if (view === 'sweep') sweepRender();
   if (view === 'schedule') showSchedule();
   if (view === 'startup') {
     if (!startupAt || isStale(startupAt, TTL.startup)) loadStartup(!!startupAt);
@@ -1020,6 +1021,7 @@ async function saveSetting(patch) {
   setSwitch($('#about-login'), settings.openAtLogin);
   setSwitch($('#pref-update'), settings.autoUpdateMole);
   setSwitch($('#about-auto'), settings.autoUpdateMole);
+  setSwitch($('#about-alerts'), settings.alerts !== false);
 }
 
 for (const [id, key] of [
@@ -1029,6 +1031,7 @@ for (const [id, key] of [
   ['#about-auto', 'autoUpdateMole'],
 ])
   $(id).addEventListener('click', () => saveSetting({ [key]: !settings[key] }));
+$('#about-alerts').addEventListener('click', () => saveSetting({ alerts: settings.alerts === false }));
 
 let grubUpdate = {};
 

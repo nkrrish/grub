@@ -7,6 +7,7 @@ const pty = require('node-pty');
 const { createScheduler } = require('./schedule');
 const aiTools = require('./aitools');
 const updater = require('./updater');
+const { createSweep } = require('./sweep');
 
 // Apps launched from Finder get a bare PATH, so look for Homebrew's tools directly.
 const PATH_EXTRA = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -90,6 +91,7 @@ function startWatcher() {
         continue;
       }
       updateTrayTitle(lastStatus);
+      checkVitals(lastStatus);
       // naming the hungriest apps means a full process list, so it's only done for someone looking
       if (watched()) sendStatus(lastStatus);
       // window events can be missed when they come close together; each reading checks the pace too
@@ -423,7 +425,7 @@ const scheduler = createScheduler({
   brew: () => find('brew') || 'brew',
   home: HOME,
   readStatus: () => lastStatus,
-  isBusy: () => !!session,
+  isBusy: () => !!session || sweep.running(),
   onChange: (snap) => {
     broadcast('schedule', snap);
     updateDockBadge(snap);
@@ -440,6 +442,97 @@ function updateDockBadge(snap) {
   const unread = snap.reports.filter((r) => !r.read).length;
   if (process.platform === 'darwin') app.dock?.setBadge(unread ? String(unread) : '');
 }
+
+/* ---------- the big clean ---------- */
+
+const gb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`);
+
+const sweep = createSweep({
+  app,
+  env: ENV,
+  mo,
+  home: HOME,
+  aiTools,
+  readSettings,
+  isBusy: () => !!session || !!scheduler.get().running,
+  onChange: (snap) => broadcast('sweep', snap),
+  notify: (result) => {
+    if (!Notification.isSupported()) return;
+    const title = result.stopped ? 'Grub stopped the clean' : result.freed > 0 ? `Grub cleared ${gb(result.freed)}` : 'Grub finished the clean';
+    const n = new Notification({ title, body: 'Open Grub to see what went.', silent: true });
+    n.on('click', () => sendToWindow('navigate', 'sweep'));
+    n.show();
+  },
+});
+
+/* ---------- keeping an eye out ---------- */
+
+// Low space or tight memory gets one notification a day, at most. Readings come in every few seconds
+// whether or not a window is open, so this rides along with them.
+const LOW_DISK_BYTES = 15e9;
+const LOW_DISK_PCT = 10;
+const HIGH_SWAP = 4e9;
+const SWAP_FOR = 15 * 60e3;
+const DAY_MS = 24 * 3600e3;
+let swapSince = 0;
+
+function alertDue(kind) {
+  const { alerts, lastAlerts = {} } = readSettings();
+  if (alerts === false || Date.now() - (lastAlerts[kind] || 0) < DAY_MS) return false;
+  writeSettings({ lastAlerts: { ...lastAlerts, [kind]: Date.now() } });
+  return true;
+}
+
+function alert(title, body) {
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body, silent: false });
+  n.on('click', () => sendToWindow('navigate', 'burrow'));
+  n.show();
+}
+
+async function lowDisk(free) {
+  // a number from the last few hours is good enough; otherwise look first so the warning can say what's clearable
+  let snap = sweep.get();
+  const lookedAt = Math.max(snap.at || 0, snap.result?.at || 0);
+  if (Date.now() - lookedAt > 6 * 3600e3 && !session && !scheduler.get().running && !sweep.running()) snap = await sweep.scan();
+  const found = snap.totals?.all || 0;
+  alert(
+    'Your Mac is almost full',
+    found >= 1e8 ? `Only ${gb(free)} left. Grub found ${gb(found)} it can clear.` : `Only ${gb(free)} left. Open Grub to see what's taking the space.`
+  );
+}
+
+function checkVitals(s) {
+  const disk = (s.disks || []).find((d) => d.mount === '/');
+  if (disk) {
+    const free = disk.total - disk.used;
+    if ((free < LOW_DISK_BYTES || 100 - disk.used_percent < LOW_DISK_PCT) && alertDue('disk')) lowDisk(free);
+  }
+  const swap = s.memory?.swap_used || 0;
+  if (swap < HIGH_SWAP) swapSince = 0;
+  else {
+    swapSince ||= Date.now();
+    if (Date.now() - swapSince >= SWAP_FOR && alertDue('memory'))
+      alert('Memory is tight', `${gb(swap)} is spilling onto the disk. Quitting a few apps helps; Grub shows the hungriest.`);
+  }
+}
+
+// Once a day Grub takes a quiet look for savings, so the dashboard has a fresh number. Only while the Mac
+// is idle and plugged in, and never on top of anything else. It removes nothing.
+const bootedAt = Date.now();
+function dailyLook() {
+  if (readSettings().alerts === false || Date.now() - bootedAt < 5 * 60e3) return;
+  const snap = sweep.get();
+  if (Date.now() - Math.max(snap.at || 0, snap.result?.at || 0) < DAY_MS) return;
+  if (session || scheduler.get().running || sweep.running()) return;
+  if (powerMonitor.isOnBatteryPower() || powerMonitor.getSystemIdleTime() < 300) return;
+  sweep.scan();
+}
+
+ipcMain.handle('sweep:get', () => sweep.get());
+ipcMain.handle('sweep:scan', () => sweep.scan());
+ipcMain.handle('sweep:run', (_e, ids) => sweep.run(Array.isArray(ids) ? ids.filter((i) => typeof i === 'string') : []));
+ipcMain.handle('sweep:cancel', () => sweep.cancel());
 
 ipcMain.handle('schedule:get', () => scheduler.get());
 ipcMain.handle('schedule:set', (_e, { key, patch }) => scheduler.set(key, patch || {}));
@@ -458,6 +551,8 @@ const DEFAULTS = {
   lastMoleUpdate: 0,
   menuBarItems: ['disk'], // what sits next to the icon; free disk is what a cleaner is for
   menuBarIcon: true, // can be hidden while a number shows, so Grub never vanishes from the menu bar
+  alerts: true, // warn when space or memory runs low, and look for savings once a day
+  lastAlerts: {},
   menuSections: ['cpu', 'memory', 'disk', 'network', 'battery', 'apps', 'actions'],
   aiCare: true, // show AI tools cleanup when there's something to clean
   aiRetention: aiTools.DEFAULT_RETENTION,
@@ -843,6 +938,9 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   if (find('mo')) startWatcher();
+  // a clean cut off by quitting gives the person's Mole whitelist back
+  sweep.restoreWhitelist();
+  setInterval(dailyLook, 10 * 60e3);
   scheduler.start();
   updateDockBadge(scheduler.get());
   // a run missed while the lid was shut catches up shortly after waking
@@ -857,6 +955,8 @@ app.on('before-quit', () => {
   app.isQuitting = true;
   session?.kill();
   scheduler.cancel();
+  sweep.cancel();
+  sweep.restoreWhitelist();
   watcher?.removeAllListeners('exit');
   watcher?.kill();
 });
