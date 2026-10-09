@@ -9,9 +9,11 @@
     "start": "electron .",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper || true",
     "icon": "sh scripts/icon.sh",
-    "package": "electron-packager . Grub --platform=darwin --arch=arm64 --icon=build/icon.icns $(actool --version >/dev/null 2>&1 && echo --icon=brand/Icon.icon) --out=out --overwrite --app-bundle-id=local.grub.app --asar.unpackDir=node_modules/node-pty --ignore=^/out --ignore=\\.md$",
-    "package:universal": "electron-packager . Grub --platform=darwin --arch=universal --icon=build/icon.icns $(actool --version >/dev/null 2>&1 && echo --icon=brand/Icon.icon) --out=out --overwrite --app-bundle-id=local.grub.app --asar.unpackDir=node_modules/node-pty --ignore=^/out --ignore=\\.md$ --osx-universal.x64ArchFiles=\"**/node_modules/node-pty/prebuilds/**\"",
-    "dist": "npm run package:universal && sh scripts/make-dmg.sh"
+    "package": "electron-packager . Grub --platform=darwin --arch=arm64 --icon=build/icon.icns $(actool --version >/dev/null 2>&1 && echo --icon=brand/Icon.icon) --out=out --overwrite --app-bundle-id=com.attechy.grub --asar.unpackDir=node_modules/node-pty --ignore=^/out --ignore=^/docs --ignore=\\.md$",
+    "package:universal": "electron-packager . Grub --platform=darwin --arch=universal --icon=build/icon.icns $(actool --version >/dev/null 2>&1 && echo --icon=brand/Icon.icon) --out=out --overwrite --app-bundle-id=com.attechy.grub --asar.unpackDir=node_modules/node-pty --ignore=^/out --ignore=^/docs --ignore=\\.md$ --osx-universal.x64ArchFiles=\"**/node_modules/node-pty/prebuilds/**\"",
+    "dist": "npm run package:universal && sh scripts/make-dmg.sh",
+    "package:signed": "node scripts/package-signed.js",
+    "dist:notarized": "npm run package:signed && sh scripts/make-dmg.sh && sh scripts/notarize-dmg.sh"
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
