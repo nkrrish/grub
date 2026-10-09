@@ -1584,6 +1584,17 @@ button.sidebar-foot {
   box-shadow: inset 0 0 0 1px rgba(184, 227, 77, 0.22);
 }
 
+.run-quiet {
+  margin-top: 6px;
+  color: var(--faint);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-quiet[hidden] {
+  display: none;
+}
+
 /* ---------- onboarding ---------- */
 
 .onboard {

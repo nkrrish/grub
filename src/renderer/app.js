@@ -730,6 +730,12 @@ async function loadApps(fresh) {
 
 $('#evict-refresh').addEventListener('click', () => loadApps(true));
 
+// A just-uninstalled app leaves the list straight away; the rescan that follows confirms it.
+function forgetApp(path) {
+  apps = apps.filter((a) => a.path !== path);
+  renderApps();
+}
+
 function renderApps() {
   const q = $('#evict-search').value.trim().toLowerCase();
   const shown = apps.filter((a) => a.name.toLowerCase().includes(q));
@@ -750,7 +756,7 @@ function renderApps() {
           { style: 'display:flex;gap:6px' },
           el(
             'button',
-            { class: 'row-act', onclick: () => runTask({ command: 'uninstall', appName: a.uninstall_name, label: a.name }) },
+            { class: 'row-act', onclick: () => runTask({ command: 'uninstall', appName: a.uninstall_name, label: a.name, path: a.path }) },
             'Evict'
           )
         )

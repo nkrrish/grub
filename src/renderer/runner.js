@@ -208,7 +208,10 @@ async function runTask(opts) {
   ensureTerm();
   term.reset();
   const key = taskKey(opts);
-  run = { opts, key, handled: {}, busy: false, exited: false, picker: null, model: null, origin: originOf(opts) };
+  run = { opts, key, handled: {}, busy: false, exited: false, picker: null, model: null, origin: originOf(opts), startedAt: Date.now() };
+  lastData = Date.now();
+  clearInterval(quietTimer);
+  quietTimer = setInterval(tickQuiet, 1000);
   const t = TASKS[key] || TASKS.clean;
   $('#run-eyebrow').textContent = t.eyebrow;
   $('#run-title').textContent = text(t.title, opts);
@@ -289,9 +292,48 @@ function closeRunner() {
   if ($('#view-history').classList.contains('is-active')) loadHistory();
 }
 
+// Some of Mole's steps go quiet for up to a minute (scanning for an app's files, say). After ten silent seconds
+// a clock shows it's still going, and that nothing is waiting on the person; a real question opens the ask sheet.
+let quietTimer;
+function tickQuiet() {
+  const note = $('#run-quiet');
+  const waiting = document.body.classList.contains('ask-open') || run?.picker || run?.busy;
+  if (!run || run.exited || run.quiet || waiting || Date.now() - lastData < 10000) {
+    note.hidden = true;
+    if (!run || run.exited) clearInterval(quietTimer);
+    return;
+  }
+  const secs = Math.round((Date.now() - run.startedAt) / 1000);
+  note.textContent = `Still working, ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} so far. Some steps take a minute; Grub will ask if it needs you.`;
+  note.hidden = false;
+}
+
+// When Mole refuses something it says why in plain words; those become the result instead of "stopped early".
+const REFUSALS = [
+  {
+    re: /(.+?) cannot be removed safely by Mole from this location/,
+    result: (m, opts) => ({
+      title: `Grub couldn't remove ${opts.label || m[1].trim()}.`,
+      text: 'It sits where macOS protects apps, so Mole left it and its data alone. Move it to the Trash in Finder instead.',
+      action: opts.path && { label: 'Show in Finder', onclick: () => window.mole.reveal(opts.path) },
+    }),
+  },
+];
+
+// The engine's last words, for when Grub doesn't recognise how a run ended: better than "go look".
+function lastWords(lines) {
+  return lines
+    .map((l) => l.replace(/[│┃╭╮╰╯─━◎●○✓✗→]/g, '').trim())
+    .filter((l) => l && !/\[y\/N\]|\[Y\/n\]|^Password:/i.test(l))
+    .slice(-2)
+    .map((l) => (l.length > 160 ? l.slice(0, 157) + '…' : l));
+}
+
 function onExit(code) {
   if (!run) return;
   run.exited = true;
+  clearInterval(quietTimer);
+  $('#run-quiet').hidden = true;
   run.code = code;
   // anything that touched the disk makes the remembered scans wrong; the next visit rescans
   if (!run.key.endsWith('-dry')) {
@@ -315,13 +357,22 @@ function onExit(code) {
   if (run.model) renderProgress(run.model);
   const s = summarize();
   const t = TASKS[run.key] || TASKS.clean;
-  const ok = !run.stopping && (code === 0 || s.freed || s.found);
-  $('#run-title').textContent = run.stopping ? 'Stopped. Grub put its fork down.' : ok ? t.done(s, run.opts) : 'Grub stopped early.';
+  // the run is over, so nothing should still look like it's digging
+  $('#run-body .digging')?.remove();
+  const screen = bufferLines(term.buffer.normal);
+  const said = screen.join('\n');
+  const refusal = !run.stopping && REFUSALS.map((r) => (r.re.exec(said) ? r.result(r.re.exec(said), run.opts) : null)).find(Boolean);
+  const ok = !refusal && !run.stopping && (code === 0 || s.freed || s.found);
+  // "Removed 1 app" only shows when it really went ("Would remove" on a dry run, nothing when kept)
+  if (run.opts.command === 'uninstall' && run.opts.path && /\bRemoved \d+ apps?\b/.test(said)) forgetApp(run.opts.path);
+  $('#run-title').textContent = run.stopping ? 'Stopped. Grub put its fork down.' : refusal ? refusal.title : ok ? t.done(s, run.opts) : 'Grub stopped early.';
   const dry = run.key.endsWith('-dry');
+  const words = lastWords(screen);
   $('#run-activity').textContent =
     (run.stopping && 'Anything already cleaned stays cleaned; nothing else was touched.') ||
+    refusal?.text ||
     s.lines.join(' · ') ||
-    (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : 'Open "Watch Grub work" to see what happened.');
+    (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : words.length ? `The engine said: ${words.join(' ')}` : 'Open "Watch Grub work" to see what happened.');
   document.body.classList.remove('is-running');
   setMood(ok ? 'done' : 'sad');
   const next =
@@ -330,7 +381,11 @@ function onExit(code) {
       : !run.stopping && run.key === 'optimize-dry'
         ? { label: 'Freshen up', onclick: () => runTask({ command: 'optimize' }) }
         : null;
-  const actions = next ? [{ label: 'Not now', onclick: closeRunner }, { ...next, primary: true }] : [{ label: 'Done', primary: true, onclick: closeRunner }];
+  const actions = next
+    ? [{ label: 'Not now', onclick: closeRunner }, { ...next, primary: true }]
+    : refusal?.action
+      ? [{ label: 'Done', onclick: closeRunner }, { ...refusal.action, primary: true }]
+      : [{ label: 'Done', primary: true, onclick: closeRunner }];
   setRunActions(actions);
   syncRunner();
 }
@@ -503,7 +558,8 @@ const PROMPTS = [
   { id: 'purge-ok', re: /Remove \d+ artifacts?.*confirm/ },
   { id: 'inst-ok', re: /Delete \d+ installers?.*confirm/ },
   { id: 'proceed', re: /Proceed with uninstallation\? \[y\/N\]/ },
-  { id: 'app-ok', re: /Remove \d+ app\(s\).*confirm/ },
+  // "Remove 1 app(s) … confirm" before Mole 1.58, "Remove 1 app, 619.1MB  Enter confirm, ESC cancel:" since
+  { id: 'app-ok', re: /Remove \d+ app(?:s|\(s\))?\b.*confirm/ },
   // any other yes/no question, e.g. Homebrew's "Do you want to proceed with the upgrade? [y/n]"
   { id: 'yn', re: /^(?!.*Proceed with uninstallation).*[[(](?:[yY](?:es)?)\/(?:[nN]o?)[\])]:?\s*$/ },
   { id: 'creds', re: /Enter your credentials:/ },
@@ -577,11 +633,12 @@ async function respond(id, lines) {
       const files = (start >= 0 ? lines.slice(start + 1) : [])
         .map((l) => l.trim())
         .filter((l) => /^[✓◎]\s/.test(l))
-        .map((l) => l.replace(/^[✓◎]\s+/, ''))
+        .map((l) => l.replace(/^[✓◎]\s+/, '').replace(/\s+,\s+/g, ' · '))
         .filter((l) => !PROMPTS.some((p) => p.re.test(l)));
+      const running = lines.some((l) => PROMPTS.find((p) => p.id === 'app-ok').re.test(l) && /\[Running\]/.test(l));
       const v = await ask({
         title: `Remove ${run.opts.label || 'this app'}?`,
-        body: 'These go to the Trash, so you can still get them back.',
+        body: (running ? 'It’s open right now, so it gets quit first. ' : '') + 'These go to the Trash, so you can still get them back.',
         list: files.slice(0, 40).concat(files.length > 40 ? [`…and ${files.length - 40} more`] : []),
         buttons: [
           { label: 'Keep it', value: 'cancel' },

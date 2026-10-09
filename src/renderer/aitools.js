@@ -1,6 +1,6 @@
 /* ---------- AI tools: cleanup and care for Claude Code, Codex, Cursor and OpenCode ---------- */
 
-const AI_TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode', gemini: 'Gemini & Antigravity' };
+const AI_TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode', gemini: 'Gemini & Antigravity', chatgpt: 'ChatGPT' };
 const AI_RETENTION = [
   [15, '15 days'],
   [30, '30 days'],
@@ -9,7 +9,7 @@ const AI_RETENTION = [
   [0, 'Never'],
 ];
 const AI_GROUPS = [
-  { key: 'cache', title: 'Caches and old versions', note: 'These come back on their own when needed. Ticked for you.' },
+  { key: 'cache', title: 'Caches, old versions and update downloads', note: 'These come back on their own when needed. Ticked for you.' },
   { key: 'session', title: 'Old sessions', note: 'Chats you haven’t opened in a while, and ones whose project folder is gone. These don’t come back, so pick each one.' },
   { key: 'worktree', title: 'Finished worktrees', note: 'Only ones with nothing uncommitted. git removes the folder; the branch and its commits stay.' },
   { key: 'maint', title: 'Maintenance', note: 'Housekeeping that frees space without removing anything you made.' },

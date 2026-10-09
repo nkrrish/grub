@@ -24,10 +24,27 @@ const P = {
   opencode: path.join(HOME, '.local/share/opencode'),
 };
 
-// Nothing outside these folders can be sent to the Trash, whatever the scan says.
-const TRASH_ROOTS = [P.claude, P.claudeVersions, P.codex, P.cursorVersions, path.join(P.opencode, 'log')];
+// AI desktop apps that update themselves and leave the downloads in ~/Library/Caches: Sparkle keeps update
+// packages it already installed, Squirrel (ShipIt) keeps a staged update until the app next quits.
+const CACHES = path.join(HOME, 'Library/Caches');
+const APP_UPDATES = [
+  { tool: 'codex', app: 'Codex', bundle: 'com.openai.codex' },
+  { tool: 'chatgpt', app: 'ChatGPT', bundle: 'com.openai.chat' },
+  { tool: 'claude', app: 'Claude', bundle: 'com.anthropic.claudefordesktop' },
+  { tool: 'cursor', app: 'Cursor', bundle: 'com.todesktop.230313mzl4w4u92' },
+];
 
-const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode' };
+// Nothing outside these folders can be sent to the Trash, whatever the scan says.
+const TRASH_ROOTS = [
+  P.claude,
+  P.claudeVersions,
+  P.codex,
+  P.cursorVersions,
+  path.join(P.opencode, 'log'),
+  ...APP_UPDATES.flatMap(({ bundle }) => [path.join(CACHES, bundle, 'org.sparkle-project.Sparkle'), path.join(CACHES, `${bundle}.ShipIt`)]),
+];
+
+const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode', chatgpt: 'ChatGPT' };
 const DEFAULT_RETENTION = { claude: 30, codex: 90 }; // days; 0 means never clean
 
 function run(cmd, args, { timeout = 60000, cwd = HOME } = {}) {
@@ -164,6 +181,29 @@ function caches(running) {
     cacheItem('codex', 'Codex logs', 'Only useful for bug reports', staleFiles(path.join(P.codex, 'log')), codexBusy),
     cacheItem('opencode', 'OpenCode logs', 'Only useful for bug reports', staleFiles(path.join(P.opencode, 'log'))),
   ].filter(Boolean);
+}
+
+/* ---------- leftover app updates ---------- */
+
+// Left alone while the app (or its updater, which lives inside it) is running, since it may be mid-update.
+function appUpdates(procs) {
+  const items = [];
+  for (const { tool, app, bundle } of APP_UPDATES) {
+    const open = procs.some((p) => p.includes(`/${app}.app/Contents/`));
+    const blocked = open && `Quit ${app} first`;
+    const sparkle = path.join(CACHES, bundle, 'org.sparkle-project.Sparkle');
+    const sparkleFiles = ls(sparkle).map((f) => path.join(sparkle, f));
+    if (sparkleFiles.length)
+      items.push({ id: idFor('update', bundle, 'sparkle'), tool, group: 'cache', kind: 'trash', name: `${app} update downloads`, sub: 'Update files the app already installed', paths: sparkleFiles, on: !blocked, blocked });
+    // the staged update goes with its state file, so the installer doesn't look for it on the next quit
+    const shipit = path.join(CACHES, `${bundle}.ShipIt`);
+    const staged = ls(shipit).filter((f) => f.startsWith('update.')).map((f) => path.join(shipit, f));
+    if (staged.length) {
+      const state = path.join(shipit, 'ShipItState.plist');
+      items.push({ id: idFor('update', bundle, 'shipit'), tool, group: 'cache', kind: 'trash', name: `${app} waiting update`, sub: 'Downloaded but not installed yet; the app fetches it again', paths: [...staged, ...(exists(state) ? [state] : [])], on: !blocked, blocked });
+    }
+  }
+  return items;
 }
 
 /* ---------- Claude Code sessions ---------- */
@@ -439,6 +479,7 @@ async function scan(settings = {}) {
     ...oldVersions('claude', P.claudeVersions, [P.claudeBin], procs),
     ...oldVersions('cursor', P.cursorVersions, P.cursorBins, procs),
     ...caches(running),
+    ...appUpdates(procs),
     ...claude,
     ...codex,
     ...(await worktrees(cwds, recentCwds)),
