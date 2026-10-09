@@ -2,7 +2,20 @@
 
 It eats your junk. Grub is a free, open-source Mac cleaner: a live health dashboard, a disk map you can dig through, guided cleanups, full app uninstalls, startup-item control, app updates and menu bar stats, all in one place. Its cleaning runs on the open-source [Mole](https://github.com/tw93/Mole) engine.
 
-Grub isn't affiliated with Mole. It drives the `mo` command installed on your Mac and does not contain any of Mole's code. For Mole's official app, see [mole.fit](https://mole.fit).
+Grub isn't affiliated with Mole. It drives the `mo` command installed on your Mac and does not contain any of Mole's code.
+
+<p align="center">
+  <a href="https://grub.attechy.com"><b>grub.attechy.com</b></a> ·
+  <a href="https://grub.attechy.com/download"><b>Download for Mac</b></a>
+</p>
+
+![Status: live health, disk, CPU, memory and battery](docs/shots/status.webp)
+
+| Disk map | AI tools cleanup |
+| --- | --- |
+| ![Disk map you can dig through](docs/shots/disk.webp) | ![AI tools cleanup](docs/shots/ai-tools.webp) |
+| **Clean** | **Schedule** |
+| ![Guided clean with a dry run first](docs/shots/clean.webp) | ![Feeding schedule for automatic checkups](docs/shots/schedule.webp) |
 
 ## Run
 
