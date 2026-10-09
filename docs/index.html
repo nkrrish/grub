@@ -1126,7 +1126,7 @@ cd grub && npm install && npm start</pre>
       requestAnimationFrame(() => canvas.classList.add('on'));
 
       // The window layer draws the screenshot itself, so the rot can eat through it. Until the texture is in
-      // (or if WebGL fails) the real <img> underneath shows as usual.
+      // (or if WebGL fails) the real screenshot image underneath shows as usual.
       if (mode === 'creep') {
         const img = canvas.parentElement.querySelector('img');
         const useImg = () => {
