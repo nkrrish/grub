@@ -63,16 +63,41 @@
     }
     nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .brand { display: flex; align-items: center; gap: 10px; font: 600 20px var(--display); text-decoration: none; }
-    .brand img { width: 30px; height: 30px; }
-    nav .links { display: flex; align-items: center; gap: 22px; font-size: 16px; }
-    nav .links a { color: var(--muted); text-decoration: none; transition: color 150ms ease; }
-    nav .links a:hover { color: var(--text); }
-    nav .links .btn-sm {
-      color: var(--ink); background: var(--rot); padding: 6px 14px; border-radius: 10px;
-      font: 600 16px var(--display);
-      transition: transform 160ms var(--ease-out), background-color 150ms ease;
+    /* The grub sits low in its icon, so the word drops to meet its eyes rather than the box's centre. */
+    .brand-name { transform: translateY(3px); }
+    nav .links { display: flex; align-items: center; gap: 4px; }
+    nav .link {
+      height: 36px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 10px;
+      color: var(--muted); text-decoration: none; font: 500 16px var(--display);
+      transition: color 150ms ease, background-color 150ms ease;
     }
-    nav .links .btn-sm:hover { color: var(--ink); background: #c6ee62; }
+    nav .link:hover { color: var(--text); background: var(--panel-2); }
+    nav .sep { width: 1px; height: 20px; background: var(--line); margin: 0 10px 0 8px; }
+    nav .chip {
+      height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 10px;
+      font: 600 16px var(--display); text-decoration: none; color: var(--text);
+      background: var(--panel); border: 1px solid var(--line);
+      transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+    }
+    nav .chip:hover { background: var(--panel-2); border-color: #3d352e; }
+    nav .chip:active { transform: scale(0.97); }
+    nav .chip svg { width: 17px; height: 17px; flex: none; }
+    nav .chip-primary { margin-left: 6px; color: var(--ink); background: var(--rot); border-color: var(--rot); }
+    nav .chip-primary:hover { background: #c6ee62; border-color: #c6ee62; }
+
+    /* ---------- Grub's face: the app sidebar's hover, press and blink ---------- */
+    .grub-face { flex: none; overflow: visible; }
+    .grub-face .gf-head, .grub-face .gf-eye, .grub-face .gf-x { transform-box: fill-box; transform-origin: center; }
+    .grub-face .gf-head { transform-origin: center bottom; transition: transform 320ms var(--ease-pop); }
+    .grub-face .gf-eye { transition: transform 70ms ease-out; }
+    .grub-face.is-blinking .gf-eye { transform: scaleY(0.12); }
+    .grub-face .gf-x { transition: transform 360ms var(--ease-out); }
+    @media (hover: hover) and (pointer: fine) {
+      :is(.brand, .face-hover):hover .gf-head { transform: translateY(-4px); }
+      :is(.brand, .face-hover):hover .gf-x { transform: rotate(90deg); }
+    }
+    :is(.brand, .face-hover):active .gf-head { transform: translateY(-1px) scale(1.04, 0.94); transition-duration: 120ms; }
+    .brand:active .grub-face { transform: none; }
 
     /* ---------- buttons ---------- */
     .btn {
@@ -80,7 +105,7 @@
       font: 600 16px var(--display); text-decoration: none;
       transition: transform 160ms var(--ease-out), background-color 150ms ease;
     }
-    .btn:active, nav .links .btn-sm:active { transform: scale(0.97); }
+    .btn:active { transform: scale(0.97); }
     .btn-primary { background: var(--rot); color: var(--ink); }
     .btn-primary:hover { background: #c6ee62; }
     .btn-ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
@@ -88,66 +113,26 @@
     .btn svg { width: 20px; height: 20px; }
 
     /* ---------- hero ---------- */
-    .hero { text-align: center; padding: 40px 0 0; position: relative; }
+    .hero { text-align: center; padding: 72px 0 0; position: relative; }
     .hero::before {
       content: ""; position: absolute; left: 50%; top: -120px; width: 1100px; height: 760px; z-index: -1;
       transform: translateX(-50%);
       background: radial-gradient(closest-side, rgba(184, 227, 77, 0.14), transparent);
       pointer-events: none;
     }
-    .mascot { width: 280px; height: 177px; margin: 0 auto; display: block; }
-    .mascot .body { animation: rise 900ms var(--ease-pop) 150ms both; }
-    .mascot .bob { animation: bob 4.8s ease-in-out 1.1s infinite; }
-    .mascot .eye { transform-box: fill-box; transform-origin: center; animation: blink 5.2s ease 2s infinite; }
-    .mascot .teeth { transform-box: fill-box; transform-origin: top; animation: chomp 4.8s ease-out 1.1s infinite; }
-    .mascot .crumb { opacity: 0; }
-    .mascot .c1 { animation: fly-l 4.8s var(--ease-in-out) 1.1s infinite; }
-    .mascot .c2 { animation: fly-r 4.8s var(--ease-in-out) 2.7s infinite; }
-    .mascot .c3 { animation: fly-l2 4.8s var(--ease-in-out) 4.3s infinite; }
-    @keyframes rise { from { transform: translateY(46px); } to { transform: translateY(0); } }
-    @keyframes bob {
-      0%, 100% { transform: translateY(0); }
-      28% { transform: translateY(-1.2px); }
-      34% { transform: translateY(0.6px); }
-    }
-    @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
-    @keyframes chomp {
-      0%, 27%, 40%, 100% { transform: scaleY(1); }
-      31% { transform: scaleY(0.45); }
-      35% { transform: scaleY(1.1); }
-    }
-    /* Crumbs of junk arc into the mouth and vanish on the chomp. Offsets are in SVG units. */
-    @keyframes fly-l {
-      0% { opacity: 0; transform: translate(-30px, 2px) rotate(-30deg); }
-      6% { opacity: 1; }
-      28% { opacity: 1; transform: translate(27px, 32px) rotate(40deg) scale(0.6); }
-      31%, 100% { opacity: 0; transform: translate(28px, 34px) rotate(50deg) scale(0.3); }
-    }
-    @keyframes fly-r {
-      0% { opacity: 0; transform: translate(30px, -2px) rotate(25deg); }
-      6% { opacity: 1; }
-      28% { opacity: 1; transform: translate(-27px, 32px) rotate(-45deg) scale(0.6); }
-      31%, 100% { opacity: 0; transform: translate(-28px, 34px) rotate(-55deg) scale(0.3); }
-    }
-    @keyframes fly-l2 {
-      0% { opacity: 0; transform: translate(-22px, -10px) rotate(10deg); }
-      6% { opacity: 1; }
-      28% { opacity: 1; transform: translate(23px, 36px) rotate(80deg) scale(0.6); }
-      31%, 100% { opacity: 0; transform: translate(24px, 38px) rotate(90deg) scale(0.3); }
-    }
 
-    h1 { font: 700 clamp(46px, 8.4vw, 88px)/1 var(--display); margin: 18px 0 0; letter-spacing: -0.01em; }
+    h1 { font: 700 clamp(46px, 8.4vw, 88px)/1 var(--display); margin: 0; letter-spacing: -0.01em; }
     h1 em { font-style: normal; color: var(--rot); }
     .lede { max-width: 620px; margin: 22px auto 0; color: var(--muted); font-size: 20px; }
     .cta { margin-top: 34px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
     .meta { margin-top: 16px; color: var(--muted); font-size: 12px; }
 
-    /* Load sequence: the grub pops up first, then the words land under it. */
+    /* Load sequence: the words land one after another, then the app window tilts up. */
     .hero .seq { animation: land 700ms var(--ease-out) both; }
-    .hero h1.seq { animation-delay: 420ms; }
-    .hero .lede.seq { animation-delay: 500ms; }
-    .hero .cta.seq { animation-delay: 580ms; }
-    .hero .meta.seq { animation-delay: 640ms; }
+    .hero h1.seq { animation-delay: 80ms; }
+    .hero .lede.seq { animation-delay: 160ms; }
+    .hero .cta.seq { animation-delay: 240ms; }
+    .hero .meta.seq { animation-delay: 300ms; }
     @keyframes land { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
     /* ---------- app window ---------- */
@@ -157,7 +142,7 @@
       border: 1px solid rgba(243, 237, 228, 0.1);
       box-shadow: 0 40px 120px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 0, 0, 0.6);
     }
-    .hero .window { transform-origin: 50% 100%; animation: tilt-in 1100ms var(--ease-out) 700ms both; }
+    .hero .window { transform-origin: 50% 100%; animation: tilt-in 1100ms var(--ease-out) 380ms both; }
     @keyframes tilt-in {
       from { opacity: 0; transform: translateY(40px) rotateX(18deg) scale(0.96); }
       to { opacity: 1; transform: none; }
@@ -245,6 +230,7 @@
     .burrow h2 { margin-bottom: 26px; }
     .peek { position: relative; height: 150px; margin-top: 40px; }
     .peek svg {
+      cursor: pointer;
       position: absolute; left: 50%; bottom: 20px; width: 180px; height: 180px;
       transform: translate(-50%, 70%); transition: transform 600ms var(--ease-pop);
     }
@@ -269,8 +255,8 @@
     @media (max-width: 560px) {
       .wrap { padding: 0 16px; }
       .grid { grid-template-columns: 1fr; }
-      nav .links a.hide-sm { display: none; }
-      .mascot { width: 200px; height: 126px; }
+      nav .hide-sm { display: none; }
+      nav .chip { padding: 0 11px; }
       .lede { font-size: 16px; }
       section { padding: 80px 0; }
       .stage { margin-top: 44px; }
@@ -279,11 +265,12 @@
     /* Reduced motion: keep the fades that explain the page, drop the movement. */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .mascot *, .hero .window { animation: none !important; }
+      .hero .window { animation: none !important; }
       .hero .seq { animation-name: fade; }
       .reveal { transform: none; transition: opacity 400ms ease; }
       .peek svg, .burrow.in .peek svg, .burrow.in .peek.up svg { transition: none; transform: translate(-50%, 4%); }
       .tour-frame img.swapping { filter: none; }
+      .grub-face * { transition: none !important; }
       @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
     }
   </style>
@@ -291,49 +278,42 @@
 <body>
   <nav id="nav">
     <div class="wrap">
-      <a class="brand" href="./"><img src="favicon.svg" alt="">Grub</a>
+      <a class="brand" href="./">
+        <svg class="grub-face brand-face" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true">
+          <defs><clipPath id="hole-nav"><rect x="0" y="-12" width="64" height="65"/></clipPath></defs>
+          <g clip-path="url(#hole-nav)">
+            <g class="gf-head">
+              <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
+              <circle class="gf-eye" cx="24.5" cy="33" r="2.7" fill="#14110F"/>
+              <path class="gf-x" d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
+              <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
+              <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+              <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+            </g>
+          </g>
+          <path d="M4 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 12 0v8H4z" fill="#5B4636"/>
+        </svg>
+        <span class="brand-name">Grub</span>
+      </a>
       <div class="links">
-        <a class="hide-sm" href="#tour">Tour</a>
-        <a class="hide-sm" href="#features">Features</a>
-        <a class="hide-sm" href="https://github.com/nkrrish/grub">GitHub</a>
-        <a class="btn-sm" href="/download">Download</a>
+        <a class="link hide-sm" href="#tour">Tour</a>
+        <a class="link hide-sm" href="#features">Features</a>
+        <a class="link hide-sm" href="#install">Install</a>
+        <span class="sep hide-sm" aria-hidden="true"></span>
+        <a class="chip" href="https://github.com/nkrrish/grub" aria-label="Grub on GitHub">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span class="hide-sm">GitHub</span>
+        </a>
+        <a class="chip chip-primary" href="/download">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+          Download
+        </a>
       </div>
     </div>
   </nav>
 
   <header class="hero">
     <div class="wrap">
-      <!-- The grub from the app icon, climbing out of its soil and eating crumbs of junk. -->
-      <svg class="mascot" viewBox="-14 0 92 58" role="img" aria-label="Grub, a lime mole, popping out of the soil">
-        <defs>
-          <clipPath id="above-soil"><rect x="-20" y="-20" width="140" height="74"/></clipPath>
-        </defs>
-        <g class="crumb c1">
-          <rect x="1" y="10" width="8" height="10" rx="1.6" fill="#F3EDE4"/>
-          <path d="M3 14h4M3 16.5h3" stroke="#A89D90" stroke-width="1" stroke-linecap="round"/>
-        </g>
-        <g class="crumb c2">
-          <rect x="56" y="11" width="8" height="8" rx="2.2" fill="#F4A7B0"/>
-        </g>
-        <g class="crumb c3">
-          <path d="M9 7l4.5 2.4v5L9 16.8 4.5 14.4v-5z" fill="#B8E34D" opacity=".85"/>
-        </g>
-        <g clip-path="url(#above-soil)">
-          <g class="body">
-            <g class="bob">
-              <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
-              <circle class="eye" cx="24.5" cy="33" r="2.7" fill="#14110F"/>
-              <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
-              <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
-              <g class="teeth">
-                <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
-                <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
-              </g>
-            </g>
-          </g>
-        </g>
-        <path d="M-14 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 15 0v6h-92z" fill="#5B4636"/>
-      </svg>
 
       <h1 class="seq">It eats your <em>junk.</em></h1>
       <p class="lede seq">Grub is a free, open-source Mac cleaner. Live health stats, a disk map you can dig through, guided cleanups and full app uninstalls, in one friendly app.</p>
@@ -476,13 +456,18 @@ cd grub && npm install && npm start</pre>
       </div>
     </div>
     <div class="peek" id="peek" aria-hidden="true">
-      <svg viewBox="0 0 64 64">
-        <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
-        <circle cx="24.5" cy="33" r="2.7" fill="#14110F"/>
-        <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
-        <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
-        <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
-        <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+      <svg class="grub-face peek-face face-hover" viewBox="0 0 64 64" width="180" height="180" aria-hidden="true">
+        <defs><clipPath id="hole-peek"><rect x="0" y="-12" width="64" height="65"/></clipPath></defs>
+        <g clip-path="url(#hole-peek)">
+          <g class="gf-head">
+            <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
+            <circle class="gf-eye" cx="24.5" cy="33" r="2.7" fill="#14110F"/>
+            <path class="gf-x" d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
+            <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
+            <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+            <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+          </g>
+        </g>
       </svg>
       <div class="soil"></div>
     </div>
@@ -502,6 +487,21 @@ cd grub && npm install && npm start</pre>
   </footer>
 
   <script>
+    // Blinks at random intervals (sometimes twice) so the idle face never feels like a loop.
+    const still = matchMedia('(prefers-reduced-motion: reduce)');
+    (function blinkLoop() {
+      const faces = document.querySelectorAll('.grub-face');
+      const blink = (then) => {
+        faces.forEach((f) => f.classList.add('is-blinking'));
+        setTimeout(() => { faces.forEach((f) => f.classList.remove('is-blinking')); then?.(); }, 140);
+      };
+      const schedule = () => setTimeout(() => {
+        if (!still.matches && !document.hidden) Math.random() < 0.25 ? blink(() => setTimeout(blink, 120)) : blink();
+        schedule();
+      }, 3500 + Math.random() * 4500);
+      schedule();
+    })();
+
     // Nav gets a backdrop once the page scrolls under it.
     const nav = document.getElementById('nav');
     const onScroll = () => nav.classList.toggle('is-stuck', scrollY > 8);
