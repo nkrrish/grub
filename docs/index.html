@@ -60,7 +60,7 @@
     nav.top { position: sticky; top: 0; z-index: 10; padding-top: 10px; }
     .bar {
       position: relative; display: flex; align-items: center; justify-content: space-between;
-      height: 60px; max-width: 1160px; margin: 0 auto; padding: 0 12px 0 24px;
+      height: 60px; max-width: 1160px; margin: 0 auto; padding: 0 20px 0 32px;
     }
     /* The frosted surface fades and settles in on its own layer, so nothing in the bar reflows. */
     .bar::before {
@@ -73,8 +73,6 @@
       transition: opacity 240ms ease, transform 320ms var(--ease-out);
     }
     nav.top.is-stuck .bar::before { opacity: 1; transform: none; }
-    nav.top.is-stuck .bar { padding-left: 32px; padding-right: 20px; }
-    .bar { transition: padding 320ms var(--ease-out); }
     @media (prefers-reduced-transparency: reduce) { .bar::before { background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 
     .brand { display: flex; align-items: center; gap: 10px; font: 600 22px var(--display); text-decoration: none; }
@@ -90,10 +88,9 @@
     .nav-links a:hover, .nav-links a[aria-current="true"] { color: var(--text); }
     /* One pill slides between links to show where you are on the page. */
     .nav-pill {
-      position: absolute; left: 0; top: 0; height: 36px; width: var(--w, 0); border-radius: 10px;
-      background: var(--panel-2); box-shadow: inset 0 0 0 1px rgba(243, 237, 228, 0.06);
-      transform: translateX(var(--x, 0)); opacity: 0;
-      transition: transform 320ms var(--ease-out), width 320ms var(--ease-out), opacity 200ms ease;
+      position: absolute; inset: 0; height: 36px; margin: auto 0; background: var(--panel-2);
+      clip-path: inset(0 var(--r, 100%) 0 var(--x, 0) round 10px); opacity: 0;
+      transition: clip-path 320ms var(--ease-out), opacity 200ms ease;
     }
     .nav-pill.on { opacity: 1; }
 
@@ -453,8 +450,7 @@
       .care-list { grid-template-columns: 1fr; gap: 28px; }
       .flow { grid-template-columns: 1fr; }
       .card { padding: 24px; }
-      .bar { padding: 0 4px 0 12px; }
-      nav.top.is-stuck .bar { padding: 0 12px 0 20px; }
+      .bar { padding: 0 12px 0 20px; }
       .bar::before { inset: 0 6px; }
       .ground-grid { grid-template-columns: 1fr 1fr; gap: 32px 24px; }
       .ground-base { flex-direction: column; align-items: flex-start; }
@@ -473,7 +469,7 @@
       .tm { animation-name: fade; }
       .peek svg, .burrow.in .peek svg, .burrow.in .peek.up svg { transition: none; transform: translate(-50%, 4%); }
       .grub-face * { transition: none !important; }
-      .bar::before, .bar, .nav-pill { transition: opacity 200ms ease; }
+      .bar::before, .nav-pill { transition: opacity 200ms ease; }
       .bar::before { transform: none; }
       @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
     }
@@ -956,7 +952,7 @@ cd grub && npm install && npm start</pre>
       navLinks.forEach((l) => l.toggleAttribute('aria-current', l === a));
       if (!a) return pill.classList.remove('on');
       pill.style.setProperty('--x', `${a.offsetLeft}px`);
-      pill.style.setProperty('--w', `${a.offsetWidth}px`);
+      pill.style.setProperty('--r', `${pill.offsetWidth - a.offsetLeft - a.offsetWidth}px`);
       pill.classList.add('on');
     };
     const sections = navLinks.map((a) => document.querySelector(a.getAttribute('href')));
