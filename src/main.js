@@ -418,7 +418,7 @@ const DEFAULTS = {
   onboarded: false,
   autoUpdateMole: true,
   lastMoleUpdate: 0,
-  menuBarText: true,
+  menuBarItems: ['disk'], // what sits next to the icon; free disk is what a cleaner is for
   menuSections: ['cpu', 'memory', 'disk', 'network', 'battery', 'apps', 'actions'],
   aiCare: true, // show AI tools cleanup when there's something to clean
   aiRetention: aiTools.DEFAULT_RETENTION,
@@ -426,7 +426,10 @@ const DEFAULTS = {
 
 function readSettings() {
   try {
-    return { ...DEFAULTS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE(), 'utf8')) };
+    const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE(), 'utf8'));
+    // 0.1.x had one on/off switch for the numbers; off still means icon only
+    if (!saved.menuBarItems && saved.menuBarText === false) saved.menuBarItems = [];
+    return { ...DEFAULTS, ...saved };
   } catch {
     return { ...DEFAULTS };
   }
@@ -505,7 +508,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   const { openAtLogin: _ignored, ...rest } = patch;
   const next = writeSettings(rest);
   broadcast('settings', next);
-  if ('menuBarText' in patch && lastStatus) updateTrayTitle(lastStatus);
+  if ('menuBarItems' in patch && lastStatus) updateTrayTitle(lastStatus);
   return { ...next, openAtLogin: app.getLoginItemSettings().openAtLogin };
 });
 
@@ -569,6 +572,12 @@ function updateMoleQuietly() {
 }
 
 ipcMain.handle('mole:update', updateMoleQuietly);
+
+/* ---------- keeping Grub fresh ---------- */
+
+ipcMain.handle('grub:update:state', () => updater.state());
+ipcMain.handle('grub:update:check', () => updater.check());
+ipcMain.handle('grub:update:install', () => updater.install());
 
 /* ---------- data ---------- */
 
@@ -697,13 +706,23 @@ function togglePopover() {
 }
 
 function updateTrayTitle(s) {
-  if (!readSettings().menuBarText) return tray?.setTitle('');
-  const disk = (s.disks || []).find((d) => d.mount === '/');
-  const free = disk ? (disk.total - disk.used) / 1e9 : null;
-  const cpu = Math.round(s.cpu?.usage ?? 0);
-  tray?.setTitle(` ${cpu}%${free != null ? ` · ${free < 10 ? free.toFixed(1) : Math.round(free)}G` : ''}`, {
-    fontType: 'monospacedDigit',
-  });
+  const items = readSettings().menuBarItems || [];
+  // two bare percentages would be ambiguous, so they get labels only when both show
+  const label = items.includes('cpu') && items.includes('memory');
+  const parts = items
+    .map((item) => {
+      if (item === 'cpu') return `${label ? 'CPU ' : ''}${Math.round(s.cpu?.usage ?? 0)}%`;
+      if (item === 'memory') return `${label ? 'MEM ' : ''}${Math.round(s.memory?.used_percent ?? 0)}%`;
+      if (item === 'disk') {
+        const disk = (s.disks || []).find((d) => d.mount === '/');
+        if (!disk) return null;
+        const free = (disk.total - disk.used) / 1e9;
+        return `${free < 10 ? free.toFixed(1) : Math.round(free)}G`;
+      }
+      return null;
+    })
+    .filter(Boolean);
+  tray?.setTitle(parts.length ? ` ${parts.join(' · ')}` : '', { fontType: 'monospacedDigit' });
 }
 
 app.setName('Grub');
@@ -719,7 +738,7 @@ app.whenReady().then(() => {
   powerMonitor.on('resume', () => scheduler.wake());
   const { autoUpdateMole, lastMoleUpdate } = readSettings();
   if (autoUpdateMole && Date.now() - lastMoleUpdate > 24 * 3600 * 1000) setTimeout(updateMoleQuietly, 15000);
-  updater.start({ isBusy: () => !!session });
+  updater.start({ isBusy: () => !!session, onChange: (state) => broadcast('grub:update', state) });
 });
 app.on('activate', showWindow);
 app.on('window-all-closed', () => {});

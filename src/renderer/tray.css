@@ -350,9 +350,19 @@ button {
   font-size: 11px;
 }
 
-.cust-extra {
-  border-radius: 12px;
-  background: rgba(243, 237, 228, 0.05);
+.cust-sub {
+  display: grid;
+  gap: 2px;
+  padding: 10px 2px 0;
+}
+
+.cust-sub b {
+  font: 600 13px 'Fredoka Variable', sans-serif;
+}
+
+.cust-sub span {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .switch {

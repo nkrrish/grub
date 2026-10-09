@@ -104,6 +104,7 @@
         <button class="sidebar-foot" id="about-open" aria-label="About Grub and its engine">
           <span class="dot" id="mole-dot"></span>
           <span id="mole-version">Looking for Mole…</span>
+          <span class="foot-badge" id="grub-update-badge" hidden>Update ready</span>
         </button>
       </aside>
 
@@ -475,12 +476,16 @@
       <p>A free, open-source Mac cleaner. Its core cleaning uses <a href="#" data-link="https://github.com/tw93/Mole">Mole</a> by tw93 (not affiliated).</p>
       <p class="about-by">Made by <a href="#" data-link="https://naguleskrrish.com/">Nagules Krrish</a> at <a href="#" data-link="https://attechy.com/">Attechy</a>.</p>
       <div class="about-version">
+        <div><b id="about-grub">Grub</b><span id="about-grub-status" aria-live="polite">Checks for updates on its own.</span></div>
+        <button class="btn btn-quiet" id="about-grub-update">Check now</button>
+      </div>
+      <div class="about-version">
         <div><b id="about-mole">Mole</b><span id="about-mole-status">Up to date as far as Grub knows.</span></div>
         <button class="btn btn-quiet" id="about-update">Update now</button>
       </div>
       <div class="pref">
-        <div><b>Update automatically</b><span>Once a day, quietly.</span></div>
-        <button class="switch" role="switch" id="about-auto" aria-checked="true" aria-label="Update the engine automatically"></button>
+        <div><b>Update Mole automatically</b><span>Once a day, quietly. Grub updates itself either way.</span></div>
+        <button class="switch" role="switch" id="about-auto" aria-checked="true" aria-label="Update Mole automatically"></button>
       </div>
       <div class="pref">
         <div><b>Open Grub at login</b><span>Stays in the menu bar.</span></div>

@@ -14,7 +14,14 @@ const SECTIONS = [
   ['apps', 'Hungriest apps', 'What’s using your Mac the most'],
 ];
 
-let settings = { menuSections: SECTIONS.map(([k]) => k), menuBarText: true };
+// What can sit next to the icon, in menu bar order.
+const BAR_ITEMS = [
+  ['disk', 'Free disk', 'Space left, like 14G'],
+  ['cpu', 'CPU', 'How busy it is, like 32%'],
+  ['memory', 'Memory', 'How full it is, like 71%'],
+];
+
+let settings = { menuSections: SECTIONS.map(([k]) => k), menuBarItems: ['disk'] };
 const cpuHistory = [];
 const netHistory = [];
 const icons = new Map();
@@ -183,7 +190,8 @@ function applySections() {
   const tiles = $$('.tile:not([hidden])');
   tiles.forEach((t, i) => t.classList.toggle('is-wide', tiles.length % 2 === 1 && i === tiles.length - 1));
   $('.tiles').hidden = !tiles.length;
-  $('#cust-text').setAttribute('aria-checked', String(settings.menuBarText !== false));
+  const bar = new Set(settings.menuBarItems || []);
+  $$('#cust-bar [data-bar]').forEach((b) => b.setAttribute('aria-checked', String(bar.has(b.dataset.bar))));
   $$('#cust-list [data-key]').forEach((b) => b.setAttribute('aria-checked', String(on.has(b.dataset.key))));
   fit();
 }
@@ -204,8 +212,18 @@ $('#cust-list').addEventListener('click', async (e) => {
   applySections();
 });
 
-$('#cust-text').addEventListener('click', async () => {
-  settings = await window.mole.settings.set({ menuBarText: settings.menuBarText === false });
+$('#cust-bar').replaceChildren(
+  ...BAR_ITEMS.map(([key, label, hint]) =>
+    el('button', { class: 'cust-row', role: 'switch', 'aria-checked': 'false', 'data-bar': key }, el('span', {}, el('b', {}, label), el('small', {}, hint)), el('i', { class: 'switch', 'aria-hidden': 'true' }))
+  )
+);
+
+$('#cust-bar').addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-bar]');
+  if (!row) return;
+  const on = new Set(settings.menuBarItems || []);
+  on.has(row.dataset.bar) ? on.delete(row.dataset.bar) : on.add(row.dataset.bar);
+  settings = await window.mole.settings.set({ menuBarItems: BAR_ITEMS.map(([k]) => k).filter((k) => on.has(k)) });
   applySections();
 });
 

@@ -1024,10 +1024,13 @@ for (const [id, key] of [
 ])
   $(id).addEventListener('click', () => saveSetting({ [key]: !settings[key] }));
 
+let grubUpdate = {};
+
 async function refreshVersion() {
   const v = await window.mole.version();
   const num = (v.match(/\d+\.\d+\.\d+/) || [''])[0];
-  $('#mole-version').textContent = num ? `Mole ${num}` : 'Mole';
+  const grub = grubUpdate.version ? `Grub ${grubUpdate.version} · ` : '';
+  $('#mole-version').textContent = grub + (num ? `Mole ${num}` : 'Mole');
   $('#about-mole').textContent = num ? `Mole ${num}` : 'Mole';
   $('#mole-dot').classList.toggle('is-on', !!num);
 }
@@ -1065,6 +1068,52 @@ $('#about-update').addEventListener('click', async () => {
   btn.disabled = false;
   if (!r) $('#about-mole-status').textContent = 'Updates need Homebrew.';
 });
+
+/* Grub's own updates: the updater in main checks every few hours; About shows where it's at. */
+
+
+const GRUB_UPDATE = {
+  dev: ['Updates come with the released app.', null],
+  idle: ['Checks for updates on its own.', 'Check now'],
+  checking: ['Checking for a newer Grub…', null],
+  downloading: ['Downloading a newer Grub…', null],
+  latest: ['Up to date. Checked just now.', 'Check now'],
+  error: ["Couldn't check right now. Grub will try again later.", 'Check now'],
+  ready: [null, 'Restart to update'],
+};
+
+function renderGrubUpdate(s) {
+  grubUpdate = s;
+  const [text, action] = GRUB_UPDATE[s.status] || GRUB_UPDATE.idle;
+  const ready = s.status === 'ready';
+  $('#about-grub').textContent = `Grub ${s.version}`;
+  $('#about-grub-status').textContent = ready
+    ? `Grub ${s.next || 'update'} is ready. It installs when Grub restarts.`
+    : s.status === 'latest' && s.checkedAt
+      ? `Up to date. Checked ${new Date(s.checkedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+      : text;
+  const btn = $('#about-grub-update');
+  // .btn sets display, which beats the hidden attribute
+  btn.style.display = s.status === 'dev' ? 'none' : '';
+  btn.disabled = !action;
+  btn.textContent = action || 'Check now';
+  btn.classList.toggle('btn-primary', ready);
+  btn.classList.toggle('btn-quiet', !ready);
+  $('#grub-update-badge').hidden = !ready;
+  refreshVersion();
+}
+
+$('#about-grub-update').addEventListener('click', async () => {
+  if (grubUpdate.status === 'ready') {
+    const ok = await window.mole.grubUpdate.install();
+    if (!ok) $('#about-grub-status').textContent = 'Finish the chore that’s running first, then restart.';
+    return;
+  }
+  renderGrubUpdate(await window.mole.grubUpdate.check());
+});
+
+window.mole.grubUpdate.onChange(renderGrubUpdate);
+window.mole.grubUpdate.state().then(renderGrubUpdate);
 
 window.mole.onMoleUpdated((r) => {
   $('#about-mole-status').textContent = r.ok ? 'Up to date. Checked just now.' : 'Could not update right now. Grub will try again tomorrow.';

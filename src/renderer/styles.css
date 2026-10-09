@@ -1449,6 +1449,16 @@ button.sidebar-foot {
   }
 }
 
+.foot-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--rot-dim);
+  color: var(--rot);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 /* ---------- onboarding ---------- */
 
 .onboard {

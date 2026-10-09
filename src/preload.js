@@ -55,6 +55,12 @@ contextBridge.exposeInMainWorld('mole', {
   openLink: (url) => ipcRenderer.invoke('link:open', url),
   updateMole: () => ipcRenderer.invoke('mole:update'),
   onMoleUpdated: on('mole:updated'),
+  grubUpdate: {
+    state: () => ipcRenderer.invoke('grub:update:state'),
+    check: () => ipcRenderer.invoke('grub:update:check'),
+    install: () => ipcRenderer.invoke('grub:update:install'),
+    onChange: on('grub:update'),
+  },
   app: {
     open: (view) => ipcRenderer.send('app:open', view),
     run: (opts) => ipcRenderer.send('app:run', opts),

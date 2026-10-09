@@ -10,42 +10,69 @@ const EVERY = 6 * 3600 * 1000;
 
 const feedURL = () => `https://update.electronjs.org/${REPO}/darwin-${process.arch}/${app.getVersion()}`;
 
-function start({ isBusy, onReady }) {
-  if (!app.isPackaged || process.platform !== 'darwin') return;
+// What About shows: status is dev, idle, checking, downloading, latest, ready or error.
+let state = { version: app.getVersion(), status: 'idle', next: null, checkedAt: null };
+let isBusy = () => false;
+let notify = () => {};
+
+function set(patch) {
+  state = { ...state, ...patch };
+  notify(state);
+}
+
+function check() {
+  if (!['idle', 'latest', 'error'].includes(state.status)) return state;
+  try {
+    autoUpdater.checkForUpdates();
+  } catch (err) {
+    console.warn('updater:', err.message);
+    set({ status: 'error' });
+  }
+  return state;
+}
+
+// never restart in the middle of a chore; it'll install on the next quit instead
+function install() {
+  if (state.status !== 'ready' || isBusy()) return false;
+  autoUpdater.quitAndInstall();
+  return true;
+}
+
+function start(opts) {
+  isBusy = opts.isBusy;
+  notify = opts.onChange || notify;
+  if (!app.isPackaged || process.platform !== 'darwin') return set({ status: 'dev' });
   try {
     autoUpdater.setFeedURL({ url: feedURL() });
   } catch (err) {
     console.warn('updater: no feed', err.message);
-    return;
+    return set({ status: 'dev' });
   }
 
-  let announced = null;
-  autoUpdater.on('error', (err) => console.warn('updater:', err.message));
+  autoUpdater.on('checking-for-update', () => set({ status: 'checking' }));
+  autoUpdater.on('update-available', () => set({ status: 'downloading' }));
+  autoUpdater.on('update-not-available', () => set({ status: 'latest', checkedAt: Date.now() }));
+  autoUpdater.on('error', (err) => {
+    console.warn('updater:', err.message);
+    // a failed background check shouldn't hide an update that's already downloaded
+    if (state.status !== 'ready') set({ status: 'error', checkedAt: Date.now() });
+  });
   autoUpdater.on('update-downloaded', (_e, _notes, name) => {
-    const version = String(name || '').replace(/^v/i, '') || 'A new version';
-    if (announced === version) return;
-    announced = version;
-    onReady?.(version);
+    const version = String(name || '').replace(/^grub\s*/i, '').replace(/^v/i, '') || null;
+    if (state.status === 'ready' && state.next === version) return;
+    set({ status: 'ready', next: version, checkedAt: Date.now() });
     if (!Notification.isSupported()) return;
     const n = new Notification({
-      title: `Grub ${version} is ready to install`,
+      title: `Grub ${version || 'update'} is ready to install`,
       body: 'Click to restart Grub now, or it updates the next time you quit.',
       silent: true,
     });
-    // never restart in the middle of a chore; it'll install on the next quit instead
-    n.on('click', () => !isBusy() && autoUpdater.quitAndInstall());
+    n.on('click', install);
     n.show();
   });
 
-  const check = () => {
-    try {
-      autoUpdater.checkForUpdates();
-    } catch (err) {
-      console.warn('updater:', err.message);
-    }
-  };
   setTimeout(check, FIRST_CHECK);
   setInterval(check, EVERY);
 }
 
-module.exports = { start };
+module.exports = { start, check, install, state: () => state };
