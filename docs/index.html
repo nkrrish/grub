@@ -151,8 +151,8 @@
       position: absolute; left: 0; top: -90px; z-index: -1; width: 100%; height: calc(100% + 90px); pointer-events: none;
       opacity: 0; transition: opacity 1200ms ease;
       /* Fades in from the top of the page and out into the facts strip, so there's never a hard edge. */
-      -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 220px, #000 calc(100% - 220px), transparent);
-      mask-image: linear-gradient(180deg, transparent 0, #000 220px, #000 calc(100% - 220px), transparent);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 220px), transparent);
+      mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 220px), transparent);
     }
     .rot.on { opacity: 1; }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
@@ -954,7 +954,7 @@ cd grub && npm install && npm start</pre>
       if (!gl) return;
       const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
       const fs = `precision mediump float;
-        uniform vec2 uRes;uniform float uTime;uniform vec2 uMouse;uniform float uMouseOn;uniform float uDpr;
+        uniform vec2 uRes;uniform float uTime;uniform float uDpr;uniform vec3 uTrail[32];
         float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
         float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
           return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
@@ -970,10 +970,12 @@ cd grub && npm install && npm start</pre>
           float v=fbm(p+1.9*q+vec2(.5*t,-.3*t));
           vec2 uv=c/(uRes/uDpr);
           // A soft clearing behind the headline; everywhere else the rot is free to grow.
-          vec2 e=(uv-vec2(.2,.62))*vec2(1.,1.5);
-          float mask=smoothstep(.12,.42,length(e));
-          float dm=length((c-uMouse)/200.);
-          v+=uMouseOn*.3*exp(-dm*dm*4.);
+          vec2 e=(uv-vec2(.17,.47))*vec2(1.,1.1);
+          float mask=smoothstep(.26,.46,length(e));
+          // Grub eats the rot along the cursor's trail; each bite fades as the mould grows back.
+          float eaten=0.;
+          for(int i=0;i<32;i++){vec3 b=uTrail[i];vec2 d=(c-b.xy)/95.;eaten=max(eaten,b.z*exp(-dot(d,d)*2.2));}
+          v-=eaten*.55;
           float g=smoothstep(.36,.64,v)*mask;
           // Every cell keeps a tiny soil dot; mould swells it up to almost touching its neighbours.
           float r=.1+.36*g;
@@ -995,7 +997,7 @@ cd grub && npm install && npm start</pre>
       const loc = gl.getAttribLocation(prog, 'p');
       gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
       const U = (n) => gl.getUniformLocation(prog, n);
-      const uRes = U('uRes'), uTime = U('uTime'), uMouse = U('uMouse'), uMouseOn = U('uMouseOn'), uDpr = U('uDpr');
+      const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uTrail = U('uTrail');
 
       let dpr = 1, w = 0, hgt = 0;
       const resize = () => {
@@ -1005,23 +1007,30 @@ cd grub && npm install && npm start</pre>
         canvas.width = w; canvas.height = hgt;
         gl.viewport(0, 0, w, hgt);
       };
-      // The cursor pulls the rot toward it; eased so it creeps rather than snaps.
-      const mouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, on: 0, ton: 0 };
+      // The cursor is Grub: it eats the rot as it moves. Bites stay clear while you keep moving,
+      // then the mould grows back once the cursor rests.
+      const N = 32, trail = new Float32Array(N * 3);
+      let head = 0, lastX = -1e4, lastY = -1e4, lastMove = 0, prev = performance.now();
       const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
       if (fine) {
         addEventListener('pointermove', (e) => {
           const r = canvas.getBoundingClientRect();
-          mouse.tx = e.clientX - r.left; mouse.ty = r.height - (e.clientY - r.top);
-          if (mouse.x < -9000) { mouse.x = mouse.tx; mouse.y = mouse.ty; }
-          mouse.ton = 1;
+          const x = e.clientX - r.left, y = r.height - (e.clientY - r.top);
+          if (y < -100 || y > r.height + 100) return;
+          lastMove = performance.now();
+          if (Math.hypot(x - lastX, y - lastY) < 14) return;
+          lastX = x; lastY = y;
+          trail.set([x, y, 1], head * 3);
+          head = (head + 1) % N;
         }, { passive: true });
-        document.addEventListener('pointerleave', () => { mouse.ton = 0; });
       }
       const draw = (time) => {
-        mouse.x += (mouse.tx - mouse.x) * 0.06; mouse.y += (mouse.ty - mouse.y) * 0.06;
-        mouse.on += (mouse.ton - mouse.on) * 0.04;
+        const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000);
+        prev = now;
+        const resting = now - lastMove > 700;
+        for (let i = 2; i < trail.length; i += 3) trail[i] = Math.max(0, trail[i] - dt * (resting ? 0.45 : 0.06));
         gl.uniform2f(uRes, w, hgt); gl.uniform1f(uDpr, dpr);
-        gl.uniform1f(uTime, time); gl.uniform2f(uMouse, mouse.x, mouse.y); gl.uniform1f(uMouseOn, mouse.on);
+        gl.uniform1f(uTime, time); gl.uniform3fv(uTrail, trail);
         gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       };
