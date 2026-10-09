@@ -6,6 +6,7 @@ const path = require('path');
 const pty = require('node-pty');
 const { createScheduler } = require('./schedule');
 const aiTools = require('./aitools');
+const updater = require('./updater');
 
 // Apps launched from Finder get a bare PATH, so look for Homebrew's tools directly.
 const PATH_EXTRA = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -718,6 +719,7 @@ app.whenReady().then(() => {
   powerMonitor.on('resume', () => scheduler.wake());
   const { autoUpdateMole, lastMoleUpdate } = readSettings();
   if (autoUpdateMole && Date.now() - lastMoleUpdate > 24 * 3600 * 1000) setTimeout(updateMoleQuietly, 15000);
+  updater.start({ isBusy: () => !!session });
 });
 app.on('activate', showWindow);
 app.on('window-all-closed', () => {});
