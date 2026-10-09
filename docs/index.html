@@ -131,6 +131,19 @@
     }
     :is(.brand, .face-hover):active .gf-head { transform: translateY(-1px) scale(1.04, 0.94); transition-duration: 120ms; }
 
+    /* ---------- hero cursor companion: a small Grub follows the pointer and chomps while it eats ---------- */
+    .chomper {
+      position: fixed; left: 0; top: 0; z-index: 9; width: 30px; height: 30px; pointer-events: none;
+      opacity: 0; transform: translate3d(-100px, -100px, 0); transition: opacity 180ms ease;
+    }
+    .chomper.on { opacity: 1; }
+    .chomper svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 90%; transition: transform 200ms var(--ease-out); }
+    .chomper .ch-teeth { transform-box: fill-box; transform-origin: top; }
+    .chomper.eating svg { animation: munch 260ms ease-in-out infinite; }
+    .chomper.eating .ch-teeth { animation: clack 260ms ease-in-out infinite; }
+    @keyframes munch { 50% { transform: translateY(1px) scale(1.06, 0.92); } }
+    @keyframes clack { 50% { transform: scaleY(0.4); } }
+
     /* ---------- buttons ---------- */
     .btn {
       display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 24px; border-radius: 14px;
@@ -155,15 +168,6 @@
       mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 220px), transparent);
     }
     .rot.on { opacity: 1; }
-    .hero-shot .window { position: relative; }
-    .creep { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 400ms ease; }
-    .creep.on { opacity: 1; }
-    /* Once the rot layer is drawing the screenshot, the window's frame goes so the eaten edges show the page. */
-    .hero-shot .window { transition: background-color 600ms ease, border-color 600ms ease, box-shadow 600ms ease; }
-    .hero-shot .window.is-rotting { overflow: visible; background: transparent; border-color: transparent; box-shadow: none; }
-    .creep { border-radius: 14px; }
-    .hero-shot .window.is-rotting img { opacity: 0; }
-    .hero-shot .window.is-rotting .creep { filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6)); }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
     h1 { font: 600 clamp(56px, 7vw, 88px)/1 var(--display); margin: 0; letter-spacing: -0.01em; }
     h1 em { font-style: normal; color: var(--rot); }
@@ -189,7 +193,15 @@
     .window img { width: 100%; aspect-ratio: 2336 / 1560; }
 
     /* ---------- facts strip ---------- */
-    .facts { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 20px; margin-top: 72px; padding: 22px 0; border-top: 1px solid var(--panel-2); border-bottom: 1px solid var(--panel-2); }
+    /* On desktop the hero fills the first screen (below the 70px nav), copy and app centred, the facts strip
+       resting on the fold. dvh keeps it steady when mobile browser bars show and hide. */
+    @media (min-width: 961px) {
+      .hero { display: flex; min-height: calc(100vh - 70px); min-height: calc(100dvh - 70px); padding-bottom: 8px; }
+      .hero > .wrap { flex: 1; width: 100%; display: flex; flex-direction: column; }
+      .hero-grid { flex: 1; }
+      .hero .facts { margin-top: 40px; }
+    }
+    .facts { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 20px; margin-top: 72px; padding: 22px 0; border-top: 1px solid rgba(243, 237, 228, 0.08); }
     .fact { display: flex; align-items: center; gap: 10px; color: var(--muted); }
     .fact .i { color: var(--rot); }
     .fact b { color: var(--text); font-weight: 600; }
@@ -207,6 +219,10 @@
       transition-delay: calc(var(--i, 0) * 60ms);
     }
     .reveal.in { opacity: 1; transform: none; }
+
+    /* ---------- spores: small mould colonies blooming and fading on the hero's dot grid, below the hero ---------- */
+    .spores { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 900ms ease; }
+    .spores.on { opacity: 1; }
 
     /* ---------- chores explorer ---------- */
     .explorer { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 20px; align-items: start; }
@@ -407,8 +423,6 @@
     .ground-grid { display: grid; grid-template-columns: minmax(0, 5fr) repeat(3, minmax(0, 2fr)); gap: 40px; padding-top: 40px; padding-bottom: 64px; position: relative; z-index: 1; }
     .ground-brand .brand { color: #fff7ec; }
     .ground-brand p { margin: 16px 0 0; max-width: 32ch; color: #d9ccbc; }
-    .notarized { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(20, 17, 15, 0.28); border: 1px solid rgba(243, 237, 228, 0.1); font-size: 12px; color: #e9dfd2; }
-    .notarized .i { width: 16px; height: 16px; color: var(--rot); }
     .ground h4 { margin: 4px 0 16px; font: 600 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: #b3a38f; }
     .ground ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
     .ground ul a, .ground-base a {
@@ -432,7 +446,12 @@
     .ground-word {
       position: relative; z-index: 0; margin: -0.18em 0 -0.32em; text-align: center; pointer-events: none; user-select: none;
       font: 700 clamp(120px, 27vw, 380px)/1 var(--display); letter-spacing: -0.02em;
-      color: transparent; background: linear-gradient(180deg, rgba(243, 237, 228, 0.07), rgba(243, 237, 228, 0.015) 70%);
+      color: transparent;
+      /* A lamp held up to the burrow wall: a soft lime glow at --mx/--my (set from the cursor) lights the
+         carved letters; --lamp fades it in and out. */
+      background:
+        radial-gradient(260px circle at var(--mx, 50%) var(--my, 40%), rgba(184, 227, 77, calc(0.42 * var(--lamp, 0))), transparent 70%),
+        linear-gradient(180deg, rgba(243, 237, 228, 0.07), rgba(243, 237, 228, 0.015) 70%);
       -webkit-background-clip: text; background-clip: text;
     }
 
@@ -494,6 +513,7 @@
       .tm { animation-name: fade; }
       .peek svg, .burrow.in .peek svg, .burrow.in .peek.up svg { transition: none; transform: translate(-50%, 4%); }
       .grub-face * { transition: none !important; }
+      .chomper { display: none; }
       .bar::before, .nav-pill { transition: opacity 200ms ease; }
       .bar::before { transform: none; }
       @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -515,13 +535,11 @@
     <symbol id="a-updates" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></g></symbol>
     <symbol id="a-schedule" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M9 3v4m6-4v4" /><path d="M12 13.5v2.5l1.6 1" /></g></symbol>
     <symbol id="a-history" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="8" /></g></symbol>
-    <symbol id="i-apple-logo" viewBox="0 0 256 256"><path d="M223.3,169.59a8.07,8.07,0,0,0-2.8-3.4C203.53,154.53,200,134.64,200,120c0-17.67,13.47-33.06,21.5-40.67a8,8,0,0,0,0-11.62C208.82,55.74,187.82,48,168,48a72.2,72.2,0,0,0-40,12.13,71.56,71.56,0,0,0-90.71,9.09A74.63,74.63,0,0,0,16,123.4a127.06,127.06,0,0,0,40.14,89.73A39.8,39.8,0,0,0,83.59,224h87.68a39.84,39.84,0,0,0,29.12-12.57,125,125,0,0,0,17.82-24.6C225.23,174,224.33,172,223.3,169.59Zm-34.63,30.94a23.76,23.76,0,0,1-17.4,7.47H83.59a23.82,23.82,0,0,1-16.44-6.51A111.14,111.14,0,0,1,32,123,58.5,58.5,0,0,1,48.65,80.47,54.81,54.81,0,0,1,88,64h.78A55.45,55.45,0,0,1,123,76.28a8,8,0,0,0,10,0A55.44,55.44,0,0,1,168,64a70.64,70.64,0,0,1,36,10.35c-13,14.52-20,30.47-20,45.65,0,23.77,7.64,42.73,22.18,55.3A105.82,105.82,0,0,1,188.67,200.53ZM128.23,30A40,40,0,0,1,167,0h1a8,8,0,0,1,0,16h-1a24,24,0,0,0-23.24,18,8,8,0,1,1-15.5-4Z"/></symbol>
     <symbol id="a-updates" viewBox="0 0 256 256"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
     <symbol id="a-clean" viewBox="0 0 256 256"><path d="M235.5,216.81c-22.56-11-35.5-34.58-35.5-64.8V134.73a15.94,15.94,0,0,0-10.09-14.87L165,110a8,8,0,0,1-4.48-10.34l21.32-53a28,28,0,0,0-16.1-37,28.14,28.14,0,0,0-35.82,16,.61.61,0,0,0,0,.12L108.9,79a8,8,0,0,1-10.37,4.49L73.11,73.14A15.89,15.89,0,0,0,55.74,76.8C34.68,98.45,24,123.75,24,152a111.45,111.45,0,0,0,31.18,77.53A8,8,0,0,0,61,232H232a8,8,0,0,0,3.5-15.19ZM67.14,88l25.41,10.3a24,24,0,0,0,31.23-13.45l21-53c2.56-6.11,9.47-9.27,15.43-7a12,12,0,0,1,6.88,15.92L145.69,93.76a24,24,0,0,0,13.43,31.14L184,134.73V152c0,.33,0,.66,0,1L55.77,101.71A108.84,108.84,0,0,1,67.14,88Zm48,128a87.53,87.53,0,0,1-24.34-42,8,8,0,0,0-15.49,4,105.16,105.16,0,0,0,18.36,38H64.44A95.54,95.54,0,0,1,40,152a85.9,85.9,0,0,1,7.73-36.29l137.8,55.12c3,18,10.56,33.48,21.89,45.16Z"/></symbol>
     <symbol id="a-schedule" viewBox="0 0 256 256"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-38.34-85.66a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L116,164.69l42.34-42.35A8,8,0,0,1,169.66,122.34Z"/></symbol>
     <symbol id="a-history" viewBox="0 0 256 256"><path d="M136,80v43.47l36.12,21.67a8,8,0,0,1-8.24,13.72l-40-24A8,8,0,0,1,120,128V80a8,8,0,0,1,16,0Zm-8-48A95.44,95.44,0,0,0,60.08,60.15C52.81,67.51,46.35,74.59,40,82V64a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H72a8,8,0,0,0,0-16H49c7.15-8.42,14.27-16.35,22.39-24.57a80,80,0,1,1,1.66,114.75,8,8,0,1,0-11,11.64A96,96,0,1,0,128,32Z"/></symbol>
     <symbol id="i-code" viewBox="0 0 256 256"><path d="M69.12,94.15,28.5,128l40.62,33.85a8,8,0,1,1-10.24,12.29l-48-40a8,8,0,0,1,0-12.29l48-40a8,8,0,0,1,10.24,12.3Zm176,27.7-48-40a8,8,0,1,0-10.24,12.3L227.5,128l-40.62,33.85a8,8,0,1,0,10.24,12.29l48-40a8,8,0,0,0,0-12.29ZM162.73,32.48a8,8,0,0,0-10.25,4.79l-64,176a8,8,0,0,0,4.79,10.26A8.14,8.14,0,0,0,96,224a8,8,0,0,0,7.52-5.27l64-176A8,8,0,0,0,162.73,32.48Z"/></symbol>
-    <symbol id="i-cpu" viewBox="0 0 256 256"><path d="M152,96H104a8,8,0,0,0-8,8v48a8,8,0,0,0,8,8h48a8,8,0,0,0,8-8V104A8,8,0,0,0,152,96Zm-8,48H112V112h32Zm88,0H216V112h16a8,8,0,0,0,0-16H216V56a16,16,0,0,0-16-16H160V24a8,8,0,0,0-16,0V40H112V24a8,8,0,0,0-16,0V40H56A16,16,0,0,0,40,56V96H24a8,8,0,0,0,0,16H40v32H24a8,8,0,0,0,0,16H40v40a16,16,0,0,0,16,16H96v16a8,8,0,0,0,16,0V216h32v16a8,8,0,0,0,16,0V216h40a16,16,0,0,0,16-16V160h16a8,8,0,0,0,0-16Zm-32,56H56V56H200v95.87s0,.09,0,.13,0,.09,0,.13V200Z"/></symbol>
     <symbol id="i-download-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
     <symbol id="i-eye" viewBox="0 0 256 256"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></symbol>
     <symbol id="a-status" viewBox="0 0 256 256"><path d="M207.06,72.67A111.24,111.24,0,0,0,128,40h-.4C66.07,40.21,16,91,16,153.13V176a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V152A111.25,111.25,0,0,0,207.06,72.67ZM224,176H119.71l54.76-75.3a8,8,0,0,0-12.94-9.42L99.92,176H32V153.13c0-3.08.15-6.12.43-9.13H56a8,8,0,0,0,0-16H35.27c10.32-38.86,44-68.24,84.73-71.66V80a8,8,0,0,0,16,0V56.33A96.14,96.14,0,0,1,221,128H200a8,8,0,0,0,0,16h23.67c.21,2.65.33,5.31.33,8Z"/></symbol>
@@ -532,17 +550,28 @@
     <symbol id="i-lock-key" viewBox="0 0 256 256"><path d="M128,112a28,28,0,0,0-8,54.83V184a8,8,0,0,0,16,0V166.83A28,28,0,0,0,128,112Zm0,40a12,12,0,1,1,12-12A12,12,0,0,1,128,152Zm80-72H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z"/></symbol>
     <symbol id="i-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
     <symbol id="a-installers" viewBox="0 0 256 256"><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Zm176,85.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z"/></symbol>
-    <symbol id="i-power" viewBox="0 0 256 256"><path d="M120,128V48a8,8,0,0,1,16,0v80a8,8,0,0,1-16,0Zm60.37-78.7a8,8,0,0,0-8.74,13.4C194.74,77.77,208,101.57,208,128a80,80,0,0,1-160,0c0-26.43,13.26-50.23,36.37-65.3a8,8,0,0,0-8.74-13.4C47.9,67.38,32,96.06,32,128a96,96,0,0,0,192,0C224,96.06,208.1,67.38,180.37,49.3Z"/></symbol>
     <symbol id="i-recycle" viewBox="0 0 256 256"><path d="M96,208a8,8,0,0,1-8,8H40a24,24,0,0,1-20.77-36l34.29-59.25L39.47,124.5A8,8,0,1,1,35.33,109l32.77-8.77a8,8,0,0,1,9.8,5.66l8.79,32.77A8,8,0,0,1,81,148.5a8.37,8.37,0,0,1-2.08.27,8,8,0,0,1-7.72-5.93l-3.8-14.15L33.11,188A8,8,0,0,0,40,200H88A8,8,0,0,1,96,208Zm140.73-28-23.14-40a8,8,0,0,0-13.84,8l23.14,40A8,8,0,0,1,216,200H147.31l10.34-10.34a8,8,0,0,0-11.31-11.32l-24,24a8,8,0,0,0,0,11.32l24,24a8,8,0,0,0,11.31-11.32L147.31,216H216a24,24,0,0,0,20.77-36ZM128,32a7.85,7.85,0,0,1,6.92,4l34.29,59.25-14.08-3.78A8,8,0,0,0,151,106.92l32.78,8.79a8.23,8.23,0,0,0,2.07.27,8,8,0,0,0,7.72-5.93l8.79-32.79a8,8,0,1,0-15.45-4.14l-3.8,14.17L148.77,28a24,24,0,0,0-41.54,0L84.07,68a8,8,0,0,0,13.85,8l23.16-40A7.85,7.85,0,0,1,128,32Z"/></symbol>
-    <symbol id="i-seal-check" viewBox="0 0 256 256"><path d="M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.56-1.47-7.63-5.37-11.57-9.14C146.28,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.56-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.72,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-11.55,39.29c-4.79,5-9.75,10.17-12.38,16.52-2.52,6.1-2.63,13.07-2.73,19.82-.1,7-.21,14.33-3.32,17.43s-10.39,3.22-17.43,3.32c-6.75.1-13.72.21-19.82,2.73-6.35,2.63-11.52,7.59-16.52,12.38S132,224,128,224s-9.15-4.92-14.11-9.69-10.17-9.75-16.52-12.38c-6.1-2.52-13.07-2.63-19.82-2.73-7-.1-14.33-.21-17.43-3.32s-3.22-10.39-3.32-17.43c-.1-6.75-.21-13.72-2.73-19.82-2.63-6.35-7.59-11.52-12.38-16.52S32,132,32,128s4.92-9.15,9.69-14.11,9.75-10.17,12.38-16.52c2.52-6.1,2.63-13.07,2.73-19.82.1-7,.21-14.33,3.32-17.43S70.51,56.9,77.55,56.8c6.75-.1,13.72-.21,19.82-2.73,6.35-2.63,11.52-7.59,16.52-12.38S124,32,128,32s9.15,4.92,14.11,9.69,10.17,9.75,16.52,12.38c6.1,2.52,13.07,2.63,19.82,2.73,7,.1,14.33.21,17.43,3.32s3.22,10.39,3.32,17.43c.1,6.75.21,13.72,2.73,19.82,2.63,6.35,7.59,11.52,12.38,16.52S224,124,224,128,219.08,137.15,214.31,142.11ZM173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z"/></symbol>
     <symbol id="i-shield-check" viewBox="0 0 256 256"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
     <symbol id="i-terminal-window" viewBox="0 0 256 256"><path d="M128,128a8,8,0,0,1-3,6.25l-40,32a8,8,0,1,1-10-12.5L107.19,128,75,102.25a8,8,0,1,1,10-12.5l40,32A8,8,0,0,1,128,128Zm48,24H136a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm56-96V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Z"/></symbol>
     <symbol id="i-arrow-up" viewBox="0 0 256 256"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></symbol>
-    <symbol id="i-star" viewBox="0 0 256 256"><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></symbol>
-    <symbol id="i-bug" viewBox="0 0 256 256"><path d="M144,92a12,12,0,1,1,12,12A12,12,0,0,1,144,92ZM100,80a12,12,0,1,0,12,12A12,12,0,0,0,100,80Zm116,64A87.76,87.76,0,0,1,213,167l22.24,9.72A8,8,0,0,1,232,192a7.89,7.89,0,0,1-3.2-.67L207.38,182a88,88,0,0,1-158.76,0L27.2,191.33A7.89,7.89,0,0,1,24,192a8,8,0,0,1-3.2-15.33L43,167A87.76,87.76,0,0,1,40,144v-8H16a8,8,0,0,1,0-16H40v-8a87.76,87.76,0,0,1,3-23L20.8,79.33a8,8,0,1,1,6.4-14.66L48.62,74a88,88,0,0,1,158.76,0l21.42-9.36a8,8,0,0,1,6.4,14.66L213,89.05a87.76,87.76,0,0,1,3,23v8h24a8,8,0,0,1,0,16H216ZM56,120H200v-8a72,72,0,0,0-144,0Zm64,95.54V136H56v8A72.08,72.08,0,0,0,120,215.54ZM200,144v-8H136v79.54A72.08,72.08,0,0,0,200,144Z"/></symbol>
+    <symbol id="i-eye-slash" viewBox="0 0 256 256"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 256 256"><path d="M152,96H104a8,8,0,0,0-8,8v48a8,8,0,0,0,8,8h48a8,8,0,0,0,8-8V104A8,8,0,0,0,152,96Zm-8,48H112V112h32Zm88,0H216V112h16a8,8,0,0,0,0-16H216V56a16,16,0,0,0-16-16H160V24a8,8,0,0,0-16,0V40H112V24a8,8,0,0,0-16,0V40H56A16,16,0,0,0,40,56V96H24a8,8,0,0,0,0,16H40v32H24a8,8,0,0,0,0,16H40v40a16,16,0,0,0,16,16H96v16a8,8,0,0,0,16,0V216h32v16a8,8,0,0,0,16,0V216h40a16,16,0,0,0,16-16V160h16a8,8,0,0,0,0-16Zm-32,56H56V56H200v95.87s0,.09,0,.13,0,.09,0,.13V200Z"/></symbol>
   </svg>
 
+  <div class="chomper" id="chomper" aria-hidden="true">
+    <svg viewBox="12 14 40 44">
+      <path d="M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z" fill="#B8E34D"/>
+      <circle cx="24.5" cy="33" r="2.7" fill="#14110F"/>
+      <path d="M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2" stroke="#14110F" stroke-width="2.6" stroke-linecap="round"/>
+      <ellipse cx="32" cy="41" rx="5.4" ry="3.8" fill="#F4A7B0"/>
+      <g class="ch-teeth">
+        <rect x="29.4" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+        <rect x="32.2" y="45.2" width="2.4" height="3.6" rx=".7" fill="#F3EDE4"/>
+      </g>
+    </svg>
+  </div>
+  <canvas class="spores" id="spores" aria-hidden="true"></canvas>
   <nav class="top" id="nav" aria-label="Main">
     <div class="bar">
       <a class="brand" href="#" aria-label="Grub, back to top">
@@ -599,7 +628,6 @@
         </div>
         <div class="hero-shot">
           <div class="window">
-            <canvas class="creep" id="creep" aria-hidden="true"></canvas>
             <img src="shots/status.webp" width="2336" height="1560" alt="Grub's Status screen: a health score, disk space, CPU, memory and battery" fetchpriority="high">
           </div>
         </div>
@@ -607,9 +635,9 @@
 
       <div class="facts">
         <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-code"/></svg><span><b>Free</b> and open source</span></div>
-        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-cpu"/></svg><span><b>Apple Silicon</b> and Intel</span></div>
-        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-seal-check"/></svg><span><b>Notarized</b> by Apple</span></div>
-        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-apple-logo"/></svg><span><b>macOS 12</b> or later</span></div>
+        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-eye-slash"/></svg><span><b>No account,</b> no tracking</span></div>
+        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-magnifying-glass"/></svg><span><b>Dry run</b> before anything goes</span></div>
+        <div class="fact"><svg class="i" aria-hidden="true"><use href="#i-cpu"/></svg><span><b>Apple Silicon</b> and Intel, macOS 12+</span></div>
       </div>
     </div>
   </header>
@@ -904,7 +932,6 @@ cd grub && npm install && npm start</pre>
         <span class="brand-name">Grub</span>
       </a>
         <p>It eats your junk. A free, open-source Mac cleaner for macOS 12 and later.</p>
-        <span class="notarized"><svg class="i" aria-hidden="true"><use href="#i-seal-check"/></svg>Signed and notarized by Apple</span>
       </div>
       <div>
         <h4>Grub</h4>
@@ -956,78 +983,49 @@ cd grub && npm install && npm start</pre>
       schedule();
     })();
 
-    // Rot: mould spreading through a dot grid, drawn with a small WebGL shader. Two layers use it:
-    //  - 'field' fills the hero background, kept clear behind the headline;
-    //  - 'creep' sits on the app screenshot and grows in from the window's edges over time.
+    // Hero background: mould spreading through a dot grid, the same dot texture as the app's disk map tiles.
     // The cursor is Grub: each pass over a spot eats half the mould there, so it takes two passes to clear,
-    // and once the cursor rests the mould grows back. Layers only run while on screen and the tab is in
-    // front; Reduce Motion gets one still frame; without WebGL the page just has no rot.
-    function rot(canvas, mode) {
+    // and the mould grows back steadily, faster once the cursor rests. It only runs while the hero is on
+    // screen and the tab is in front; Reduce Motion gets one still frame; without WebGL there's no rot.
+    (function rot(canvas) {
       const gl = canvas.getContext('webgl', { premultipliedAlpha: true, antialias: false, alpha: true });
       if (!gl) return;
       const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
       const fs = `precision mediump float;
         uniform vec2 uRes;uniform float uTime;uniform float uDpr;uniform sampler2D uEat;uniform vec2 uGrid;
-        uniform float uMode;uniform float uGrow;uniform sampler2D uImg;uniform float uHasImg;
         float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
         float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
           return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
         float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
         void main(){
-          vec2 px=gl_FragCoord.xy/uDpr;
           vec2 size=uRes/uDpr;
-          float cell=uMode<.5?9.:7.;
+          vec2 px=gl_FragCoord.xy/uDpr;
+          float cell=9.;
           vec2 id=floor(px/cell),f=fract(px/cell)-.5;
           vec2 c=(id+.5)*cell;
           vec2 p=c/240.;
           float t=uTime*.035;
           vec2 q=vec2(fbm(p+vec2(t,0.)),fbm(p+vec2(5.2,1.3)-t));
           float v=fbm(p+1.9*q+vec2(.5*t,-.3*t));
-          vec2 uv=c/size;
-          float mask,base;
-          if(uMode<.5){
-            // A soft clearing behind the headline; everywhere else the rot is free to grow.
-            vec2 e=(uv-vec2(.17,.47))*vec2(1.,1.1);
-            mask=smoothstep(.26,.46,length(e));
-            // Thinner behind the nav bar, so its links stay easy to read.
-            mask*=mix(.35,1.,smoothstep(70.,180.,size.y-c.y));
-            base=.1;
-          }else{
-            // Creeps in from the window's edges: the front advances with uGrow and is roughened by the noise.
-            // Depth comes from distance to the window's edge; noise only roughens the line, so the rot
-            // reads as eaten in from the outside rather than streaks across the app.
-            float edge=min(min(c.x,size.x-c.x),min(c.y,size.y-c.y));
-            float reach=mix(40.,min(180.,size.y*.26),uGrow);
-            mask=1.-smoothstep(0.,reach,edge+(v-.5)*(reach*1.1+60.)+(q.x-.5)*(reach*.5+30.));
-            base=0.;
-          }
           // How much Grub has eaten here: half per pass of the cursor.
           float eaten=texture2D(uEat,vec2(c.x,size.y-c.y)/uGrid).r;
           v-=eaten*eaten*.62;
+          // Behind the headline the rot thins rather than stops, and the edge of that thinning follows the
+          // noise, so the copy stays readable while the background still feels like one organic growth.
+          vec2 uv=c/size;
+          vec2 e=(uv-vec2(.17,.47))*vec2(1.,1.1);
+          float clear=smoothstep(.18,.48,length(e)+(q.y-.5)*.28);
+          float mask=mix(.42,1.,clear);
+          // Thinner behind the nav bar, so its links stay easy to read.
+          mask*=mix(.35,1.,smoothstep(70.,180.,size.y-c.y));
+          float g=smoothstep(.36,.64,v)*mask;
+          // Every cell keeps a tiny soil dot; mould swells it up to almost touching its neighbours.
+          float r=.1+.36*g;
+          float a=1.-smoothstep(r-.08,r,length(f));
           vec3 soil=vec3(.357,.275,.212),moss=vec3(.42,.52,.19),mold=vec3(.722,.89,.302);
-          if(uMode<.5){
-            float g=smoothstep(.36,.64,v)*mask;
-            float r=base+.36*g;
-            float a=1.-smoothstep(r-.08,r,length(f));
-            vec3 col=mix(soil,mix(moss,mold,smoothstep(.56,.8,v)),smoothstep(.38,.56,v)*mask);
-            float al=a*(.18+.72*g);
-            gl_FragColor=vec4(col*al,al);
-          }else{
-            // The window rots away: depth d per 7px cell. Shallow rot speckles the screenshot with mould dots,
-            // deeper rot eats the cell through, so the edge crumbles in steps of the dot grid.
-            float d=mask*(1.-eaten*eaten);
-            vec4 img=uHasImg>.5?texture2D(uImg,vec2(px.x/size.x,1.-px.y/size.y)):vec4(0.);
-            float imgA=1.-smoothstep(.48,.56,d);
-            // Before it's eaten through, the app browns and darkens like rotting fruit.
-            float bruise=smoothstep(.12,.48,d);
-            img.rgb=mix(img.rgb,img.rgb*vec3(.55,.5,.3)+vec3(.05,.04,.01),bruise*.85);
-            // Bright mould lives on the advancing front; behind it, where the window is gone, only soil crumbs remain.
-            float front=smoothstep(.3,.5,d)*(1.-smoothstep(.56,.8,d));
-            float r=.5*smoothstep(.12,.45,d)*(1.-.7*smoothstep(.62,.9,d));
-            float da=(1.-smoothstep(r-.08,r,length(f)))*smoothstep(.12,.35,d)*mix(.55,.95,front);
-            vec3 col=mix(soil,mix(moss,mold,front),smoothstep(.1,.3,d)*(.35+.65*front));
-            gl_FragColor=vec4(col*da+img.rgb*imgA*(1.-da),da+img.a*imgA*(1.-da));
-          }
+          vec3 col=mix(soil,mix(moss,mold,smoothstep(.56,.8,v)),smoothstep(.38,.56,v)*mask);
+          float al=a*(.18+.72*g)*mix(.6,1.,clear);
+          gl_FragColor=vec4(col*al,al);
         }`;
       const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn('rot shader:', gl.getShaderInfoLog(o)); return null; } return o; };
       const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
@@ -1041,13 +1039,11 @@ cd grub && npm install && npm start</pre>
       const loc = gl.getAttribLocation(prog, 'p');
       gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
       const U = (n) => gl.getUniformLocation(prog, n);
-      const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uGrid = U('uGrid'), uMode = U('uMode'), uGrow = U('uGrow');
-      const uEat = U('uEat'), uImg = U('uImg'), uHasImg = U('uHasImg');
-      gl.uniform1i(uEat, 0); gl.uniform1i(uImg, 1); gl.uniform1f(uHasImg, 0);
-      gl.uniform1f(uMode, mode === 'creep' ? 1 : 0);
+      const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uGrid = U('uGrid');
+      gl.uniform1i(U('uEat'), 0);
 
       // The eaten grid: one value per 24px cell, uploaded as a small texture and smoothed by linear filtering.
-      const CELL = 24, BITE = mode === 'creep' ? 60 : 70;
+      const CELL = 24, BITE = 70;
       let dpr = 1, w = 0, hgt = 0, cssW = 0, cssH = 0;
       let gw = 1, gh = 1, eaten = new Float32Array(1), inside = new Uint8Array(1), bytes = new Uint8Array(1);
       const held = [];
@@ -1059,8 +1055,7 @@ cd grub && npm install && npm start</pre>
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
       const resize = () => {
-        // The window draws the screenshot itself, so it renders at full Retina sharpness.
-        dpr = Math.min(devicePixelRatio || 1, mode === 'creep' ? 2 : 1.5);
+        dpr = Math.min(devicePixelRatio || 1, 1.5);
         cssW = canvas.offsetWidth; cssH = canvas.offsetHeight;
         w = Math.round(cssW * dpr); hgt = Math.round(cssH * dpr);
         canvas.width = w; canvas.height = hgt;
@@ -1073,8 +1068,7 @@ cd grub && npm install && npm start</pre>
       if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
         addEventListener('pointermove', (e) => {
           const r = canvas.getBoundingClientRect();
-          // Map into the canvas's own (untransformed) coordinates, so the tilted hero window still lines up.
-          const x = (e.clientX - r.left) * (cssW / r.width), y = (e.clientY - r.top) * (cssH / r.height);
+          const x = e.clientX - r.left, y = e.clientY - r.top;
           lastMove = performance.now();
           // Cells the cursor has moved away from are ready to be bitten again on the next pass.
           for (let n = held.length - 1; n >= 0; n--) {
@@ -1093,29 +1087,24 @@ cd grub && npm install && npm start</pre>
         document.addEventListener('pointerleave', () => { inside.fill(0); held.length = 0; });
       }
 
-      // The creep grows in over ~25s after the page settles; the background field is fully grown from the start.
-      const born = performance.now();
-      const growth = (now) => (mode === 'creep' ? Math.min(1, Math.max(0, (now - born - 800) / 12000)) : 1);
       const draw = (time) => {
         const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000);
         prev = now;
         // Mould always grows back: steadily while the cursor moves (so a long browse doesn't strip the page),
-        // faster once it rests. The window creep regrows more slowly so cleaning it feels worth it.
-        const resting = now - lastMove > 700;
-        const rate = mode === 'creep' ? (resting ? 0.12 : 0.05) : (resting ? 0.45 : 0.16);
+        // faster once it rests.
+        const rate = now - lastMove > 700 ? 0.45 : 0.16;
         for (let k = 0; k < eaten.length; k++) {
           if (eaten[k] > 0) eaten[k] = Math.max(0, eaten[k] - dt * rate);
           bytes[k] = eaten[k] * 255;
         }
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gw, gh, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, bytes);
         gl.uniform2f(uRes, w, hgt); gl.uniform1f(uDpr, dpr); gl.uniform2f(uGrid, gw * CELL, gh * CELL);
-        gl.uniform1f(uTime, time); gl.uniform1f(uGrow, still.matches ? 0.5 : growth(now));
+        gl.uniform1f(uTime, time);
         gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       };
       let raf = 0, inView = true;
-      const start = performance.now() - (mode === 'creep' ? 12000 : 40000);
+      const start = performance.now() - 40000;
       const loop = (now) => { draw((now - start) / 1000); raf = requestAnimationFrame(loop); };
       const sync = () => {
         cancelAnimationFrame(raf); raf = 0;
@@ -1128,30 +1117,125 @@ cd grub && npm install && npm start</pre>
       still.addEventListener('change', sync);
       resize(); sync();
       requestAnimationFrame(() => canvas.classList.add('on'));
+    })(document.getElementById('rot'));
 
-      // The window layer draws the screenshot itself, so the rot can eat through it. Until the texture is in
-      // (or if WebGL fails) the real screenshot image underneath shows as usual.
-      if (mode === 'creep') {
-        const img = canvas.parentElement.querySelector('img');
-        const useImg = () => {
-          const t = gl.createTexture();
-          gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, t);
-          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-          gl.activeTexture(gl.TEXTURE0);
-          gl.uniform1f(uHasImg, 1);
-          canvas.parentElement.classList.add('is-rotting');
-          if (!raf) draw(40);
-        };
-        img.complete && img.naturalWidth ? useImg() : img.addEventListener('load', useImg, { once: true });
-      }
-    }
-    rot(document.getElementById('rot'), 'field');
-    rot(document.getElementById('creep'), 'creep');
+    // Hero cursor companion. The real pointer stays; a small Grub trails just below-right of it while the
+    // pointer is over the hero, chomps while it's moving (that's when it eats the rot), and steps aside over
+    // links and buttons. Mouse and trackpad only; hidden under Reduce Motion.
+    (function chomper() {
+      const el = document.getElementById('chomper');
+      const hero = document.querySelector('.hero');
+      if (!matchMedia('(hover: hover) and (pointer: fine)').matches || still.matches) return;
+      let tx = -100, ty = -100, x = -100, y = -100, over = false, lastMove = 0, raf = 0;
+      const tick = () => {
+        x += (tx - x) * 0.22; y += (ty - y) * 0.22;
+        el.style.transform = `translate3d(${x + 14}px, ${y + 16}px, 0)`;
+        el.classList.toggle('eating', performance.now() - lastMove < 120);
+        raf = over || Math.abs(tx - x) + Math.abs(ty - y) > 0.5 ? requestAnimationFrame(tick) : 0;
+      };
+      addEventListener('pointermove', (e) => {
+        const r = hero.getBoundingClientRect();
+        const inHero = e.clientY >= r.top && e.clientY <= r.bottom;
+        const onControl = !!e.target.closest('a, button, input, select, textarea, nav');
+        over = inHero && !onControl;
+        el.classList.toggle('on', over);
+        if (!over) return;
+        if (x < -50) { x = e.clientX; y = e.clientY; }
+        tx = e.clientX; ty = e.clientY; lastMove = performance.now();
+        if (!raf) raf = requestAnimationFrame(tick);
+      }, { passive: true });
+      document.addEventListener('pointerleave', () => { over = false; el.classList.remove('on'); });
+    })();
+
+    // Spores: below the hero, the hero's mould tries to take hold again. Small colonies bloom on the same 9px
+    // dot grid (soil, then moss, then lime), then fade away. They're pinned to the page, so they scroll with
+    // the content. Only once the hero (which has its own rot) is out of the way; paused when the tab is
+    // hidden; off entirely under Reduce Motion.
+    (function spores() {
+      const canvas = document.getElementById('spores');
+      const ctx = canvas.getContext('2d');
+      if (!ctx || still.matches) return;
+      const hero = document.querySelector('.hero');
+      const CELL = 9, MAX = 7;
+      const soil = [91, 70, 54], moss = [107, 133, 48], mold = [184, 227, 77];
+      const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+      let w = 0, h = 0, dpr = 1, colonies = [], raf = 0, prev = 0, heroVisible = true, nextSpawn = 0;
+      const resize = () => {
+        dpr = Math.min(devicePixelRatio || 1, 2);
+        w = innerWidth; h = innerHeight;
+        canvas.width = w * dpr; canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+      // A colony: a centre cell in page coordinates and a ragged blob of cells around it, each with its own
+      // strength, so the shape is irregular rather than a circle.
+      const spawn = (now) => {
+        const cx = Math.floor((Math.random() * w) / CELL), cy = Math.floor((scrollY + Math.random() * h) / CELL);
+        const size = 1.5 + Math.random() * 2.5, cells = [];
+        for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) {
+          const d = Math.hypot(i, j) / size + (Math.random() - 0.5) * 0.6;
+          if (d < 1) cells.push({ i: cx + i, j: cy + j, s: 1 - d });
+        }
+        colonies.push({ cells, born: now, grow: 1800 + Math.random() * 1400, hold: 1200 + Math.random() * 2000, fade: 2600 + Math.random() * 1600 });
+      };
+      const frame = (now) => {
+        if (now > nextSpawn && colonies.length < MAX) { spawn(now); nextSpawn = now + 900 + Math.random() * 1800; }
+        ctx.clearRect(0, 0, w, h);
+        const top = scrollY;
+        colonies = colonies.filter((c) => now - c.born < c.grow + c.hold + c.fade);
+        for (const c of colonies) {
+          const age = now - c.born;
+          // 0 → 1 while growing, holds, then decays back to 0.
+          const life = age < c.grow ? age / c.grow : age < c.grow + c.hold ? 1 : 1 - (age - c.grow - c.hold) / c.fade;
+          const L = life * life * (3 - 2 * life);
+          for (const cell of c.cells) {
+            const g = Math.max(0, Math.min(1, L * 1.3 - (1 - cell.s) * 0.6)) * cell.s;
+            if (g < 0.04) continue;
+            const y = cell.j * CELL + CELL / 2 - top;
+            if (y < -CELL || y > h + CELL) continue;
+            const col = g < 0.5 ? mix(soil, moss, g * 2) : mix(moss, mold, (g - 0.5) * 2);
+            ctx.fillStyle = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${0.2 + 0.6 * g})`;
+            ctx.beginPath(); ctx.arc(cell.i * CELL + CELL / 2, y, (0.1 + 0.36 * g) * CELL, 0, 6.283); ctx.fill();
+          }
+        }
+        raf = requestAnimationFrame(frame);
+      };
+      const sync = () => {
+        const run = !heroVisible && !document.hidden;
+        canvas.classList.toggle('on', !heroVisible);
+        if (run && !raf) raf = requestAnimationFrame(frame);
+        if (!run && raf) { cancelAnimationFrame(raf); raf = 0; }
+      };
+      new IntersectionObserver(([e]) => { heroVisible = e.intersectionRatio > 0.35; sync(); }, { threshold: [0, 0.35, 1] }).observe(hero);
+      document.addEventListener('visibilitychange', sync);
+      addEventListener('resize', resize);
+      resize(); sync();
+    })();
+
+    // Footer lamp: the glow trails the cursor over the footer with a little lag, so it feels held rather than
+    // stuck to the pointer, and fades out when the cursor leaves. Only one small element's variables change.
+    (function lamp() {
+      const footer = document.querySelector('footer.ground');
+      const word = footer.querySelector('.ground-word');
+      if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      let tx = 0, ty = 0, x = 0, y = 0, on = 0, target = 0, raf = 0;
+      const tick = () => {
+        const k = still.matches ? 1 : 0.12;
+        x += (tx - x) * k; y += (ty - y) * k; on += (target - on) * (still.matches ? 1 : 0.08);
+        word.style.setProperty('--mx', `${x}px`);
+        word.style.setProperty('--my', `${y}px`);
+        word.style.setProperty('--lamp', on.toFixed(3));
+        raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.3 || Math.abs(target - on) > 0.005 ? requestAnimationFrame(tick) : 0;
+      };
+      const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+      footer.addEventListener('pointermove', (e) => {
+        const r = word.getBoundingClientRect();
+        tx = e.clientX - r.left; ty = e.clientY - r.top;
+        if (!target) { x = tx; y = ty; }
+        target = 1; kick();
+      }, { passive: true });
+      footer.addEventListener('pointerleave', () => { target = 0; kick(); });
+    })();
+
     // Nav turns into a floating bar once the page has scrolled under it. A sentinel avoids a scroll listener.
     const nav = document.getElementById('nav');
     const sentinel = document.createElement('div');
