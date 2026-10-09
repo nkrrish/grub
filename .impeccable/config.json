@@ -8,6 +8,15 @@
         "value": "cubic-bezier(0.34, 1.4, 0.64, 1)",
         "createdAt": "2026-10-09T04:29:49.709Z",
         "reason": "Claude: deliberate small overshoot only on the mascot popping out of its soil (character motion), not on UI controls"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "docs/index.html"
+        ],
+        "createdAt": "2026-10-09T04:51:07.091Z",
+        "reason": "Claude: regex rule only reads font-size declarations (12/16/22px); headings use the font shorthand at 30-88px, so the real scale is 12-88px with every step >= 1.25x"
       }
     ]
   }
