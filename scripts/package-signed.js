@@ -38,7 +38,16 @@ try { execSync('actool --version', { stdio: 'ignore' }); } catch { hasActool = f
     overwrite: true,
     appBundleId: 'com.attechy.grub',
     asar: { unpackDir: 'node_modules/node-pty' },
-    ignore: [/^\/out/, /^\/docs/, /\.md$/],
+    ignore: [
+      /^\/out/,
+      /^\/docs/,
+      /^\/wrangler\.jsonc$/,
+      /\.md$/,
+      // Only mark.svg is used at runtime; the rest of brand/ is source artwork.
+      /^\/brand\/(?!mark\.svg$)/,
+      // node-pty ships Windows binaries and its C++ sources; the Mac app needs neither.
+      /^\/node_modules\/node-pty\/(prebuilds\/win32-|deps|third_party|src|binding\.gyp)/,
+    ],
     osxUniversal: { x64ArchFiles: '**/node_modules/node-pty/prebuilds/**' },
     extendInfo,
     osxSign: {
