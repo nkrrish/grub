@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in Grub doesn't work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Grub version
+      description: Click the version number at the bottom of the sidebar.
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS 26.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Mac chip
+      options: [Apple Silicon, Intel]
+    validations:
+      required: true
+  - type: input
+    id: mole
+    attributes:
+      label: Mole version
+      description: Run `mo --version` in Terminal, if the bug is in a cleaning step.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      description: For a cleaning step, turn on "Watch Grub work" and paste what the terminal shows.
+      render: text

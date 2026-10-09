@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/nkrrish/grub/discussions
+    about: Ask how something works or share an idea.
+  - name: Security problem
+    url: https://github.com/nkrrish/grub/security/advisories/new
+    about: Report a vulnerability privately.
+  - name: Problem with what Mole cleans
+    url: https://github.com/tw93/Mole/issues
+    about: Grub runs Mole for cleaning. Issues in Mole's rules belong there.
