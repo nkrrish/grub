@@ -1060,13 +1060,21 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('about-open')) closeAbout();
 });
 
+// "Checked 15:33" today, "Checked 8 Oct" before that; both rows in About use it.
+function checked(at) {
+  const d = new Date(at);
+  const today = d.toDateString() === new Date().toDateString();
+  return `Checked ${today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' })}.`;
+}
+
+// Checking Mole updates it too when Homebrew has a newer one.
 $('#about-update').addEventListener('click', async () => {
   const btn = $('#about-update');
   btn.disabled = true;
-  $('#about-mole-status').textContent = 'Checking for a fresher engine…';
+  $('#about-mole-status').textContent = 'Checking for a newer Mole…';
   const r = await window.mole.updateMole();
   btn.disabled = false;
-  if (!r) $('#about-mole-status').textContent = 'Updates need Homebrew.';
+  if (!r) $('#about-mole-status').textContent = 'Checking needs Homebrew.';
 });
 
 /* Grub's own updates: the updater in main checks every few hours; About shows where it's at. */
@@ -1090,7 +1098,7 @@ function renderGrubUpdate(s) {
   $('#about-grub-status').textContent = ready
     ? `Grub ${s.next || 'update'} is ready. It installs when Grub restarts.`
     : s.status === 'latest' && s.checkedAt
-      ? `Up to date. Checked ${new Date(s.checkedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`
+      ? `Up to date. ${checked(s.checkedAt)}`
       : text;
   const btn = $('#about-grub-update');
   // .btn sets display, which beats the hidden attribute
@@ -1116,7 +1124,13 @@ window.mole.grubUpdate.onChange(renderGrubUpdate);
 window.mole.grubUpdate.state().then(renderGrubUpdate);
 
 window.mole.onMoleUpdated((r) => {
-  $('#about-mole-status').textContent = r.ok ? 'Up to date. Checked just now.' : 'Could not update right now. Grub will try again tomorrow.';
+  const before = $('#about-mole').textContent;
+  const now = (r.version?.match(/\d+\.\d+\.\d+/) || [''])[0];
+  $('#about-mole-status').textContent = !r.ok
+    ? "Couldn't check right now. Grub will try again tomorrow."
+    : now && before !== 'Mole' && before !== `Mole ${now}`
+      ? `Updated to ${now}. ${checked(Date.now())}`
+      : `Up to date. ${checked(Date.now())}`;
   refreshVersion();
 });
 
@@ -1222,6 +1236,7 @@ function startOnboarding() {
 (async () => {
   settings = await window.mole.settings.get();
   await saveSetting({});
+  if (settings.lastMoleUpdate) $('#about-mole-status').textContent = `Up to date. ${checked(settings.lastMoleUpdate)}`;
   digState.home = await window.mole.home();
   window.mole.onStatus(renderStatus);
   renderChore('clean');
