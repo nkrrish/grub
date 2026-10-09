@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- Social share image for grub.attechy.com (docs/og.png). Rendered at 2x by scripts/og-image.js.
+     Concept, from build/og/philosophy.md: a mould field on a strict dot lattice, thinned to bare soil in a
+     clearing around the grub. The picture shows what Grub does without saying it twice. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Fredoka'; src: url('../../node_modules/@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2') format('woff2'); font-weight: 300 700; }
+  html, body { margin: 0; background: #0b0908; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  const S = Number(new URLSearchParams(location.search).get('scale') || 2);
+  const W = 1200, H = 630;
+  const c = document.getElementById('c');
+  c.width = W * S; c.height = H * S;
+  const g = c.getContext('2d');
+  g.scale(S, S);
+
+  const soil = [91, 70, 54], moss = [107, 133, 48], mold = [184, 227, 77];
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  const noise = (x, y) => {
+    const ix = Math.floor(x), iy = Math.floor(y); let fx = x - ix, fy = y - iy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    const a = hash(ix, iy), b = hash(ix + 1, iy), c2 = hash(ix, iy + 1), d = hash(ix + 1, iy + 1);
+    return a + (b - a) * fx + (c2 - a) * fy + (a - b - c2 + d) * fx * fy;
+  };
+  const fbm = (x, y) => { let v = 0, a = 0.5; for (let i = 0; i < 5; i++) { v += a * noise(x, y); x = x * 2.03 + 1.7; y = y * 2.03 + 9.2; a *= 0.5; } return v; };
+
+  // Composition anchors.
+  const GROUND = 500;                 // the scalloped horizon
+  const GX = 892, GSCALE = 4.4;       // grub centre x and scale (mark.svg is a 64-unit box)
+  const CLEAR = { x: GX, y: 382, r: 205 };
+
+  // Deep earth.
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0b0908'); bg.addColorStop(1, '#16120e');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+
+  // The field: one lattice, only the mark size varies. Thick to the right, thin under the words,
+  // and eaten back to specks in a clearing around the grub, with the densest growth ringing its edge.
+  const CELL = 12;
+  for (let y = CELL / 2; y < GROUND + 6; y += CELL) for (let x = CELL / 2; x < W; x += CELL) {
+    const qx = fbm(x / 300, y / 300), qy = fbm(x / 300 + 5.2, y / 300 + 1.3);
+    const v = fbm(x / 300 + 1.9 * qx + 2, y / 300 + 1.9 * qy + 4);
+    const right = smooth(0.34, 0.78, x / W);
+    const d = Math.hypot((x - CLEAR.x) / 1.08, y - CLEAR.y) / CLEAR.r;
+    const ring = Math.exp(-Math.pow((d - 1.06 - (v - 0.5) * 0.3) / 0.2, 2)) * 0.95;
+    const eaten = smooth(1.0, 0.72, d + (v - 0.5) * 0.35);
+    let k = (smooth(0.38, 0.7, v) * (0.16 + 0.6 * right) + ring * smooth(0.1, 0.5, x / W)) * (1 - eaten);
+    k = Math.min(1, k);
+    const col = k < 0.5 ? mix(soil, moss, k * 2) : mix(moss, mold, (k - 0.5) * 2);
+    const r = (0.1 + 0.37 * k) * CELL;
+    const a = 0.2 + 0.72 * k;
+    g.fillStyle = `rgba(${col.map(Math.round).join(',')},${a})`;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+
+  // The grub, from brand/mark.svg, rising out of the ground inside its clearing.
+  g.save();
+  g.translate(GX - 32 * GSCALE, GROUND - 52 * GSCALE - 14);
+  g.scale(GSCALE, GSCALE);
+  g.fillStyle = '#B8E34D';
+  g.fill(new Path2D('M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z'));
+  g.fillStyle = '#14110F';
+  g.beginPath(); g.arc(24.5, 33, 2.7, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#14110F'; g.lineWidth = 2.6; g.lineCap = 'round';
+  g.stroke(new Path2D('M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2'));
+  g.fillStyle = '#F4A7B0';
+  g.beginPath(); g.ellipse(32, 41, 5.4, 3.8, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#F3EDE4';
+  g.fill(new Path2D('M30.1 45.2h1a.7.7 0 0 1 .7.7v2.2a.7.7 0 0 1-.7.7h-1a.7.7 0 0 1-.7-.7v-2.2a.7.7 0 0 1 .7-.7z'));
+  g.fill(new Path2D('M32.9 45.2h1a.7.7 0 0 1 .7.7v2.2a.7.7 0 0 1-.7.7h-1a.7.7 0 0 1-.7-.7v-2.2a.7.7 0 0 1 .7-.7z'));
+  g.restore();
+
+  // The horizon: one continuous scalloped line, the same soil as the site's footer.
+  const step = 26;
+  g.fillStyle = '#5b4636';
+  g.beginPath(); g.moveTo(0, H); g.lineTo(0, GROUND);
+  for (let x = 0; x <= W; x += step) g.quadraticCurveTo(x + step / 2, GROUND - 10, x + step, GROUND);
+  g.lineTo(W, H); g.closePath(); g.fill();
+  const deep = g.createLinearGradient(0, GROUND, 0, H);
+  deep.addColorStop(0, 'rgba(20,17,15,0)'); deep.addColorStop(1, 'rgba(20,17,15,0.45)');
+  g.fillStyle = deep; g.fillRect(0, GROUND, W, H - GROUND);
+
+  const ready = Promise.race([document.fonts.load('600 40px Fredoka'), new Promise((r) => setTimeout(r, 3000))]);
+  ready.catch(() => {}).finally(() => {
+    const M = 84;
+    // Small mark + wordmark, top left.
+    g.save();
+    g.translate(M - 4, 44); g.scale(0.62, 0.62);
+    g.fillStyle = '#B8E34D'; g.fill(new Path2D('M13 49V37C13 25.4 21.5 16 32 16s19 9.4 19 21v12a7 7 0 0 1-7 7H20a7 7 0 0 1-7-7z'));
+    g.fillStyle = '#14110F'; g.beginPath(); g.arc(24.5, 33, 2.7, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#14110F'; g.lineWidth = 2.6; g.lineCap = 'round'; g.stroke(new Path2D('M37.2 30.4l5.2 5.2m0-5.2l-5.2 5.2'));
+    g.fillStyle = '#F4A7B0'; g.beginPath(); g.ellipse(32, 41, 5.4, 3.8, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#5B4636'; g.fill(new Path2D('M4 52c3.5-3.4 7.5-3.4 11 0s7.5 3.4 11 0 7.5-3.4 11 0 7.5 3.4 11 0 7.5-3.4 12 0v8H4z'));
+    g.restore();
+    g.fillStyle = '#f3ede4';
+    g.font = '600 30px Fredoka';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Grub', M + 40, 81);
+
+    // The headline: monumental and rounded.
+    g.font = '600 112px Fredoka';
+    g.fillStyle = '#f3ede4';
+    g.fillText('It eats', M - 4, 246);
+    const your = 'your ';
+    g.fillText(your, M - 4, 356);
+    g.fillStyle = '#b8e34d';
+    g.fillText('junk.', M - 4 + g.measureText(your).width, 356);
+
+    // One quiet line beneath it.
+    g.font = '400 30px Fredoka';
+    g.fillStyle = '#b3a798';
+    g.fillText('A free, open-source Mac cleaner.', M, 424);
+
+    // The address, set into the soil.
+    g.font = '500 22px Fredoka';
+    g.fillStyle = 'rgba(243,237,228,0.82)';
+    g.fillText('grub.attechy.com', M, 578);
+    document.title = 'ready';
+  });
+</script>
+</body>
+</html>
