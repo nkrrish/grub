@@ -87,7 +87,7 @@
       color: var(--muted); text-decoration: none; font: 400 16px var(--display); border-radius: 10px;
       transition: color 150ms ease;
     }
-    .nav-links a:hover, .nav-links a[aria-current="true"] { color: var(--text); }
+    .nav-links a:hover, .nav-links a[aria-current] { color: var(--text); }
     /* One pill slides between links to show where you are on the page. */
     .nav-pill {
       position: absolute; inset: 0; height: 36px; margin: auto 0; background: var(--panel-2);
@@ -156,6 +156,34 @@
     .btn-ghost { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
     .btn-ghost:hover { background: var(--panel-2); border-color: #3d352e; }
 
+    /* ---------- download split button: main part downloads the detected build, the caret offers the other ---------- */
+    .dl { position: relative; display: inline-flex; }
+    .dl .dl-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .dl .dl-more {
+      width: 46px; padding: 0; justify-content: center; border: 0; cursor: pointer;
+      border-top-left-radius: 0; border-bottom-left-radius: 0;
+      box-shadow: inset 1px 0 0 rgba(20, 17, 15, 0.22);
+    }
+    .dl .dl-more .i { width: 16px; height: 16px; transition: transform 200ms var(--ease-out); }
+    .dl .dl-more[aria-expanded="true"] .i { transform: rotate(180deg); }
+    .dl-menu {
+      position: absolute; top: calc(100% + 8px); left: 0; z-index: 5; min-width: 100%; width: max-content;
+      padding: 6px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line);
+      box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.7);
+      transform-origin: top left; transition: opacity 150ms ease, transform 180ms var(--ease-out);
+    }
+    .dl-menu[hidden] { display: block; visibility: hidden; opacity: 0; transform: translateY(-4px) scale(0.97); pointer-events: none; }
+    .dl-menu a {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 10px 12px; border-radius: 10px;
+      color: var(--text); text-decoration: none; transition: background-color 120ms ease;
+    }
+    .dl-menu a:hover, .dl-menu a:focus-visible { background: var(--panel-2); outline: none; }
+    .dl-menu b { display: block; font: 600 16px var(--display); }
+    .dl-menu small { display: block; color: var(--muted); font-size: 12px; }
+    .dl-menu .dl-tick { width: 16px; height: 16px; color: var(--rot); opacity: 0; }
+    .dl-menu a[aria-current] .dl-tick { opacity: 1; }
+    .burrow .dl-menu { left: 50%; transform-origin: top center; translate: -50% 0; }
+
     /* ---------- hero: copy on the left, the real app bleeding off the right edge ---------- */
     /* Clip sideways only, so the app window can bleed off the right edge while the rot reaches up behind the nav. */
     .hero { position: relative; isolation: isolate; padding: 56px 0 0; overflow-x: clip; }
@@ -171,6 +199,8 @@
     .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
     h1 { font: 600 clamp(56px, 7vw, 88px)/1 var(--display); margin: 0; letter-spacing: -0.01em; }
     h1 em { font-style: normal; color: var(--rot); }
+    /* Always "It eats" / "your junk.": the second line never splits. */
+    .h1-line { white-space: nowrap; }
     .lede { max-width: 30ch; margin: 22px 0 0; color: var(--muted); font-size: 22px; line-height: 1.5; }
     .cta { margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap; }
     .hero .seq { animation: land 700ms var(--ease-out) both; }
@@ -300,7 +330,7 @@
     }
     .tm-crumbs button:hover { color: var(--text); }
     .tm-crumbs button:active { transform: scale(0.97); }
-    .tm-crumbs button[aria-current="true"] { color: var(--rot); background: rgba(184, 227, 77, 0.12); }
+    .tm-crumbs button[aria-current] { color: var(--rot); background: rgba(184, 227, 77, 0.12); }
     .tm-note { flex: none; color: var(--muted); font-size: 12px; opacity: 0.8; }
     .tm-map { position: relative; flex: 1; min-height: 280px; margin: -3px; }
     .tm {
@@ -513,6 +543,7 @@
       .tm { animation-name: fade; }
       .peek svg, .burrow.in .peek svg, .burrow.in .peek.up svg { transition: none; transform: translate(-50%, 4%); }
       .grub-face * { transition: none !important; }
+      .dl-menu, .dl .dl-more .i { transition: none; }
       .chomper { display: none; }
       .bar::before, .nav-pill { transition: opacity 200ms ease; }
       .bar::before { transform: none; }
@@ -557,6 +588,8 @@
     <symbol id="i-arrow-up" viewBox="0 0 256 256"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></symbol>
     <symbol id="i-eye-slash" viewBox="0 0 256 256"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
     <symbol id="i-cpu" viewBox="0 0 256 256"><path d="M152,96H104a8,8,0,0,0-8,8v48a8,8,0,0,0,8,8h48a8,8,0,0,0,8-8V104A8,8,0,0,0,152,96Zm-8,48H112V112h32Zm88,0H216V112h16a8,8,0,0,0,0-16H216V56a16,16,0,0,0-16-16H160V24a8,8,0,0,0-16,0V40H112V24a8,8,0,0,0-16,0V40H56A16,16,0,0,0,40,56V96H24a8,8,0,0,0,0,16H40v32H24a8,8,0,0,0,0,16H40v40a16,16,0,0,0,16,16H96v16a8,8,0,0,0,16,0V216h32v16a8,8,0,0,0,16,0V216h40a16,16,0,0,0,16-16V160h16a8,8,0,0,0,0-16Zm-32,56H56V56H200v95.87s0,.09,0,.13,0,.09,0,.13V200Z"/></symbol>
+    <symbol id="i-caret-down" viewBox="0 0 256 256"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 256 256"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></symbol>
   </svg>
 
   <div class="chomper" id="chomper" aria-hidden="true">
@@ -601,7 +634,7 @@
         <a class="icon-link" href="https://github.com/nkrrish/grub" aria-label="Grub on GitHub" title="Grub on GitHub">
           <svg class="i" aria-hidden="true"><use href="#i-github-logo"/></svg>
         </a>
-        <a class="chip chip-primary" href="/download">
+        <a class="chip chip-primary" href="/download" data-dl-main>
           Download
         </a>
       </div>
@@ -613,13 +646,28 @@
     <div class="wrap">
       <div class="hero-grid">
         <div>
-          <h1 class="seq">It eats your <em>junk.</em></h1>
+          <h1 class="seq">It eats<br><span class="h1-line">your <em>junk.</em></span></h1>
           <p class="lede seq">A free, open-source Mac cleaner with live health stats, a disk map and careful, guided cleanups.</p>
           <div class="cta seq">
-            <a class="btn btn-primary" href="/download">
+            <div class="dl" data-dl>
+            <a class="btn btn-primary dl-main" href="/download" data-dl-main>
               <svg class="i" aria-hidden="true"><use href="#i-download-simple"/></svg>
               Download for Mac
             </a>
+            <button class="btn btn-primary dl-more" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Choose Apple Silicon or Intel">
+              <svg class="i" aria-hidden="true"><use href="#i-caret-down"/></svg>
+            </button>
+            <div class="dl-menu" role="menu" hidden>
+              <a role="menuitem" href="/download" data-arch="arm64">
+                <span><b>Apple Silicon</b><small>M1, M2, M3, M4 and later</small></span>
+                <svg class="i dl-tick" aria-hidden="true"><use href="#i-check"/></svg>
+              </a>
+              <a role="menuitem" href="/download/intel" data-arch="x64">
+                <span><b>Intel</b><small>Older Macs with an Intel processor</small></span>
+                <svg class="i dl-tick" aria-hidden="true"><use href="#i-check"/></svg>
+              </a>
+            </div>
+          </div>
             <a class="btn btn-ghost" href="https://github.com/nkrrish/grub">
               <svg class="i" aria-hidden="true"><use href="#i-github-logo"/></svg>
               View source
@@ -858,7 +906,7 @@
         <div class="card reveal">
           <h3>Install</h3>
           <ol class="steps">
-            <li><b><a href="/download">Download Grub</a></b>, or pick a version from the <a href="https://github.com/nkrrish/grub/releases">releases page</a>.</li>
+            <li><b><a href="/download" data-dl-main>Download Grub</a></b> for Apple Silicon, or the <a href="/download/intel">Intel version</a>.</li>
             <li><b>Drag Grub to Applications</b> and open it.</li>
             <li><b>Follow setup.</b> It takes about a minute, and you can run it again from About.</li>
           </ol>
@@ -887,10 +935,25 @@ cd grub && npm install && npm start</pre>
     <div class="wrap">
       <h2>Feed Grub your junk.</h2>
       <div class="cta">
-        <a class="btn btn-primary" href="/download" id="final-cta">
+        <div class="dl" data-dl>
+        <a class="btn btn-primary dl-main" href="/download" id="final-cta" data-dl-main>
           <svg class="i" aria-hidden="true"><use href="#i-download-simple"/></svg>
           Download for Mac
         </a>
+        <button class="btn btn-primary dl-more" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Choose Apple Silicon or Intel">
+          <svg class="i" aria-hidden="true"><use href="#i-caret-down"/></svg>
+        </button>
+        <div class="dl-menu" role="menu" hidden>
+          <a role="menuitem" href="/download" data-arch="arm64">
+            <span><b>Apple Silicon</b><small>M1, M2, M3, M4 and later</small></span>
+            <svg class="i dl-tick" aria-hidden="true"><use href="#i-check"/></svg>
+          </a>
+          <a role="menuitem" href="/download/intel" data-arch="x64">
+            <span><b>Intel</b><small>Older Macs with an Intel processor</small></span>
+            <svg class="i dl-tick" aria-hidden="true"><use href="#i-check"/></svg>
+          </a>
+        </div>
+      </div>
       </div>
     </div>
     <div class="peek" id="peek" aria-hidden="true">
@@ -939,7 +1002,7 @@ cd grub && npm install && npm start</pre>
           <li><a href="#chores">Chores</a></li>
           <li><a href="#screens">Screens</a></li>
           <li><a href="#install">Install</a></li>
-          <li><a href="/download">Download</a></li>
+          <li><a href="/download" data-dl-main>Download</a></li>
         </ul>
       </div>
       <div>
@@ -1234,6 +1297,50 @@ cd grub && npm install && npm start</pre>
         target = 1; kick();
       }, { passive: true });
       footer.addEventListener('pointerleave', () => { target = 0; kick(); });
+    })();
+
+    // Downloads: Apple Silicon by default. Switch to Intel only when the browser clearly reports an Intel Mac:
+    // Chromium browsers expose the CPU architecture; elsewhere a non-Apple GPU name is a strong Intel hint.
+    // The caret on each download button lists both builds, so anyone can pick the other one.
+    (function downloads() {
+      const LINKS = { arm64: '/download', x64: '/download/intel' };
+      const LABEL = { arm64: 'Apple Silicon', x64: 'Intel' };
+      const apply = (arch) => {
+        document.querySelectorAll('[data-dl-main]').forEach((a) => { a.href = LINKS[arch]; a.title = `Download Grub for ${LABEL[arch]} Macs`; });
+        document.querySelectorAll('.dl-menu a').forEach((a) => a.toggleAttribute('aria-current', a.dataset.arch === arch));
+      };
+      apply('arm64');
+      const guess = async () => {
+        try {
+          const hints = await navigator.userAgentData?.getHighEntropyValues?.(['architecture']);
+          if (hints?.architecture) return hints.architecture === 'arm' ? 'arm64' : 'x64';
+        } catch {}
+        try {
+          const gl = document.createElement('canvas').getContext('webgl');
+          const info = gl?.getExtension('WEBGL_debug_renderer_info');
+          const gpu = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+          if (/intel|amd|radeon|nvidia/i.test(gpu) && !/apple/i.test(gpu)) return 'x64';
+        } catch {}
+        return 'arm64';
+      };
+      if (/Macintosh|Mac OS X/.test(navigator.userAgent)) guess().then(apply);
+
+      document.querySelectorAll('[data-dl]').forEach((dl) => {
+        const btn = dl.querySelector('.dl-more'), menu = dl.querySelector('.dl-menu');
+        const close = (focus) => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); if (focus) btn.focus(); };
+        btn.addEventListener('click', () => {
+          const open = menu.hidden;
+          document.querySelectorAll('.dl-menu').forEach((m) => { m.hidden = true; });
+          document.querySelectorAll('.dl-more').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+          if (open) { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); menu.querySelector('a').focus({ preventScroll: true }); }
+        });
+        menu.addEventListener('keydown', (e) => {
+          const items = [...menu.querySelectorAll('a')], i = items.indexOf(document.activeElement);
+          if (e.key === 'Escape') close(true);
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+        });
+        document.addEventListener('click', (e) => { if (!dl.contains(e.target)) close(false); });
+      });
     })();
 
     // Nav turns into a floating bar once the page has scrolled under it. A sentinel avoids a scroll listener.

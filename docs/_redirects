@@ -1,1 +1,3 @@
-/download https://github.com/nkrrish/grub/releases/latest/download/Grub.dmg 302
+/download https://github.com/nkrrish/grub/releases/latest/download/Grub-apple-silicon.dmg 302
+/download/apple-silicon https://github.com/nkrrish/grub/releases/latest/download/Grub-apple-silicon.dmg 302
+/download/intel https://github.com/nkrrish/grub/releases/latest/download/Grub-intel.dmg 302
