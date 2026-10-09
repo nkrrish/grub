@@ -77,7 +77,8 @@ function startWatcher() {
       }
       nameProcesses(lastStatus).then((st) => {
         if (st !== lastStatus) return; // a newer snapshot arrived meanwhile
-        broadcast('status', st);
+        // hidden windows skip the redraw; they get the newest reading when they're shown
+        for (const w of [win, popover]) if (w && !w.isDestroyed() && w.isVisible()) w.webContents.send('status', st);
         updateTrayTitle(st);
       });
     }
@@ -348,9 +349,14 @@ ipcMain.handle('session:start', (_e, opts) => {
   if (session) session.kill();
   session = pty.spawn(file, args, { name: 'xterm-256color', cols: opts.cols, rows: opts.rows, cwd: HOME, env: ENV });
   const current = session;
+  // the window reads the engine's screens and answers its prompts, so it runs at full speed in the background
+  win?.webContents.setBackgroundThrottling(false);
   current.onData((d) => win?.webContents.send('session:data', d));
   current.onExit(({ exitCode }) => {
-    if (session === current) session = null;
+    if (session === current) {
+      session = null;
+      win?.webContents.setBackgroundThrottling(true);
+    }
     win?.webContents.send('session:exit', exitCode);
   });
   return (file === BREW ? 'brew ' : 'mo ') + (label || args.join(' '));
@@ -648,10 +654,11 @@ function createWindow() {
     backgroundColor: '#14110F',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 18, y: 18 },
-    // keep driving the engine at full speed while the window is in the background
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+    // throttled when hidden, so a closed window costs next to nothing; a running chore switches it off
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.on('show', () => lastStatus && win.webContents.send('status', lastStatus));
   // closing the window keeps Grub in the menu bar
   win.on('close', (e) => {
     if (app.isQuitting) return;
@@ -691,6 +698,7 @@ function createTray() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   popover.loadFile(path.join(__dirname, 'renderer', 'tray.html'));
+  popover.on('show', () => lastStatus && popover.webContents.send('status', lastStatus));
   popover.on('blur', () => popover.hide());
 }
 
