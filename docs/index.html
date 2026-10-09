@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grub: it eats your junk</title>
+  <meta name="description" content="Grub is a free, open-source Mac cleaner with a live health dashboard, a disk map, guided cleanups, full app uninstalls, startup control, updates and menu bar stats.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:title" content="Grub: it eats your junk">
+  <meta property="og:description" content="A free, open-source Mac cleaner. Health at a glance, a disk map, guided cleanups and full uninstalls.">
+  <meta property="og:image" content="https://grub.attechy.com/icon.png">
+  <meta property="og:url" content="https://grub.attechy.com/">
+  <meta name="theme-color" content="#0b0908">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0908;
+      --panel: #17130f;
+      --panel-2: #201b17;
+      --line: #2f2924;
+      --text: #f3ede4;
+      --muted: #a89d90;
+      --rot: #b8e34d;
+      --nose: #f4a7b0;
+      --soil: #5b4636;
+      --display: 'Fredoka', ui-rounded, system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 600 20px var(--display); text-decoration: none; }
+    .brand img { width: 32px; height: 32px; }
+    nav .links { display: flex; gap: 22px; font-size: 13px; }
+    nav .links a { color: var(--muted); text-decoration: none; }
+    nav .links a:hover { color: var(--text); }
+
+    .hero { text-align: center; padding: 72px 0 88px; position: relative; }
+    .hero::before {
+      content: ""; position: absolute; inset: 0 -20% auto; height: 520px; z-index: -1;
+      background: radial-gradient(closest-side, rgba(184, 227, 77, .16), transparent);
+    }
+    .hero .icon { width: 168px; height: 168px; filter: drop-shadow(0 24px 48px rgba(0, 0, 0, .55)); }
+    h1 { font: 700 clamp(44px, 8vw, 80px)/1.02 var(--display); margin: 28px 0 0; letter-spacing: -.01em; }
+    h1 em { font-style: normal; color: var(--rot); }
+    .lede { max-width: 600px; margin: 22px auto 0; color: var(--muted); font-size: 20px; }
+    .cta { margin-top: 36px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px; padding: 14px 24px; border-radius: 14px;
+      font: 600 16px var(--display); text-decoration: none; transition: transform .15s ease, background .15s ease;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--rot); color: #14110f; }
+    .btn-primary:hover { background: #c6ee62; }
+    .btn-ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    .btn-ghost:hover { background: #2a231d; }
+    .btn svg { width: 20px; height: 20px; }
+    .meta { margin-top: 16px; color: var(--muted); font-size: 13px; }
+
+    section { padding: 72px 0; border-top: 1px solid var(--panel-2); }
+    h2 { font: 600 clamp(30px, 4.6vw, 42px)/1.1 var(--display); margin: 0 0 12px; }
+    .sub { color: var(--muted); margin: 0 0 40px; max-width: 620px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--panel); border: 1px solid var(--panel-2); border-radius: 18px; padding: 24px; }
+    .card h3 { font: 600 20px var(--display); margin: 14px 0 6px; }
+    .card p { margin: 0; color: var(--muted); }
+    .dot {
+      width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+      background: rgba(184, 227, 77, .12); color: var(--rot);
+    }
+    .dot svg { width: 22px; height: 22px; }
+
+    .trust { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .trust .card { display: flex; gap: 16px; align-items: flex-start; }
+    .trust .card h3 { margin-top: 0; }
+    .trust .dot { flex: none; background: rgba(244, 167, 176, .12); color: var(--nose); }
+
+    .install { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+    ol.steps li { counter-increment: s; position: relative; padding: 0 0 18px 44px; color: var(--muted); }
+    ol.steps li b { color: var(--text); font-weight: 600; }
+    ol.steps li::before {
+      content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center; background: var(--panel-2); color: var(--rot); font: 600 13px var(--display);
+    }
+    pre {
+      margin: 12px 0 0; padding: 14px 16px; border-radius: 12px; background: #0f0d0b; border: 1px solid var(--panel-2);
+      font: 13px/1.6 var(--mono); color: var(--text); overflow-x: auto;
+    }
+    pre .c { color: var(--muted); }
+
+    footer { border-top: 1px solid var(--panel-2); padding: 40px 0 56px; color: var(--muted); font-size: 13px; }
+    footer .row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    footer p { margin: 0 0 6px; }
+    footer a { color: var(--text); text-decoration-color: var(--soil); text-underline-offset: 3px; }
+    footer a:hover { text-decoration-color: var(--rot); }
+
+    @media (max-width: 820px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .trust, .install { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .wrap { padding: 0 16px; }
+      .grid { grid-template-columns: 1fr; }
+      nav .links a.hide-sm { display: none; }
+      .hero { padding: 48px 0 64px; }
+      .hero .icon { width: 128px; height: 128px; }
+      section { padding: 56px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="./"><img src="favicon.svg" alt="">Grub</a>
+      <div class="links">
+        <a class="hide-sm" href="#features">Features</a>
+        <a class="hide-sm" href="#install">Install</a>
+        <a href="https://github.com/nkrrish/grub">GitHub</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <img class="icon" src="icon.png" alt="Grub app icon" width="168" height="168">
+      <h1>It eats your <em>junk.</em></h1>
+      <p class="lede">Grub is a free, open-source Mac cleaner. Live health stats, a disk map you can dig through, guided cleanups and full app uninstalls, in one friendly app.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/nkrrish/grub/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+          Download for Mac
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/nkrrish/grub">View source</a>
+      </div>
+      <p class="meta">Free forever · Apple Silicon and Intel · Signed and notarized by Apple</p>
+    </header>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Everything a tidy Mac needs</h2>
+      <p class="sub">Grub runs on Mole, a battle-tested open-source cleaning engine, and gives it a home: dashboards, checklists and a review step before anything goes.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+          <h3>Health at a glance</h3>
+          <p>Live CPU, memory, disk, battery and network, plus CPU and free space in your menu bar.</p>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="18" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg></div>
+          <h3>Disk map</h3>
+          <p>See what's taking up space and dig into any folder to find the culprits.</p>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></div>
+          <h3>Guided cleanups</h3>
+          <p>Caches, logs, old installers and build leftovers, with progress you can follow. Tidy up cleans and optimizes in one go.</p>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m9 9 6 6m0-6-6 6"/></svg></div>
+          <h3>Full uninstalls</h3>
+          <p>Remove an app along with the support files it leaves behind, after you review the list.</p>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9m6.4-5.4a8 8 0 1 1-12.8 0"/></svg></div>
+          <h3>Startup control</h3>
+          <p>See every login item and launch agent, and switch off the ones you don't need.</p>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/></svg></div>
+          <h3>AI tools cleanup</h3>
+          <p>Clears old versions, caches, stale sessions and finished worktrees from Claude Code, Codex, Cursor and OpenCode.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Careful by design</h2>
+      <p class="sub">A cleaner should never surprise you. Grub shows its work and asks before it acts.</p>
+      <div class="trust">
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg></div>
+          <div><h3>Sniff first</h3><p>Run any cleanup as a dry run to see exactly what would go before anything is touched.</p></div>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+          <div><h3>Your password stays yours</h3><p>Admin steps ask in Grub's own window and pass it straight to <code>sudo</code>. It's never stored.</p></div>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10M2 19h20"/><path d="m9 11 2 2 4-4"/></svg></div>
+          <div><h3>Watch it work</h3><p>Open the real terminal any time and see every command Grub runs.</p></div>
+        </div>
+        <div class="card">
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <div><h3>Open source, notarized</h3><p>Every line is on GitHub under the GPL. Releases are signed and checked by Apple.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Get Grub</h2>
+      <p class="sub">Grub is a free download. It works on macOS 12 Monterey or later.</p>
+      <div class="install">
+        <div class="card">
+          <ol class="steps">
+            <li><b>Download the DMG</b> from the <a href="https://github.com/nkrrish/grub/releases/latest">latest release</a>.</li>
+            <li><b>Drag Grub to Applications</b> and open it.</li>
+            <li><b>Follow setup.</b> Grub installs the Mole engine if you don't have it and walks you through Full Disk Access.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <p style="margin:0;color:var(--muted)">Build it yourself:</p>
+<pre><span class="c"># needs Homebrew and Node</span>
+brew install mole
+git clone https://github.com/nkrrish/grub
+cd grub && npm install && npm start</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap row">
+      <div>
+        <p>Made by <a href="https://naguleskrrish.com/">Nagules Krrish</a> at <a href="https://attechy.com/">Attechy</a>.</p>
+        <p>Free software under the <a href="https://github.com/nkrrish/grub/blob/main/LICENSE">GPL-3.0</a>.</p>
+      </div>
+      <div>
+        <p>Cleaning runs on <a href="https://github.com/tw93/Mole">Mole</a> by tw93.</p>
+        <p>Grub isn't affiliated with Mole.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

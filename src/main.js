@@ -548,7 +548,7 @@ ipcMain.handle('perm:check', async () => ({
 // Asking System Events for anything triggers the one-time macOS prompt.
 ipcMain.handle('perm:automation', automationState);
 ipcMain.handle('perm:open', (_e, pane) => PANES[pane] && shell.openExternal(PANES[pane]));
-ipcMain.handle('link:open', (_e, url) => /^https:\/\/(github\.com|mole\.fit|brew\.sh)\//.test(url) && shell.openExternal(url));
+ipcMain.handle('link:open', (_e, url) => /^https:\/\/((grub\.)?attechy\.com|naguleskrrish\.com|github\.com|brew\.sh)\//.test(url) && shell.openExternal(url));
 
 /* ---------- keeping Mole fresh ---------- */
 
