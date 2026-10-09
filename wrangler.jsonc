@@ -1,0 +1,16 @@
+{
+  // Must match the Worker name in the dashboard exactly, or a Workers Build
+  // from the connected repo fails.
+  "name": "grub",
+  // Only bumped deliberately: it pins the Workers runtime behaviour.
+  "compatibility_date": "2026-10-01",
+
+  // An assets-only Worker serving the landing page in docs/. There is no
+  // `main` script, so requests are served straight from the asset layer.
+  "assets": {
+    "directory": "./docs",
+    "html_handling": "auto-trailing-slash"
+  },
+
+  "observability": { "enabled": true }
+}
