@@ -994,10 +994,11 @@ cd grub && npm install && npm start</pre>
             base=.1;
           }else{
             // Creeps in from the window's edges: the front advances with uGrow and is roughened by the noise.
+            // Depth comes from distance to the window's edge; noise only roughens the line, so the rot
+            // reads as eaten in from the outside rather than streaks across the app.
             float edge=min(min(c.x,size.x-c.x),min(c.y,size.y-c.y));
-            float reach=mix(10.,size.y*.24,uGrow);
-            mask=1.-smoothstep(reach*.55,reach,edge+(q.x-.5)*120.);
-            v=v+.18;
+            float reach=mix(14.,min(140.,size.y*.2),uGrow);
+            mask=1.-smoothstep(0.,reach,edge+(v-.5)*reach*1.1+(q.x-.5)*reach*.5);
             base=0.;
           }
           // How much Grub has eaten here: half per pass of the cursor.
@@ -1014,7 +1015,7 @@ cd grub && npm install && npm start</pre>
           }else{
             // The window rots away: depth d per 7px cell. Shallow rot speckles the screenshot with mould dots,
             // deeper rot eats the cell through, so the edge crumbles in steps of the dot grid.
-            float d=mask*smoothstep(.3,.72,v)*(1.-eaten*eaten);
+            float d=mask*(1.-eaten*eaten);
             vec4 img=uHasImg>.5?texture2D(uImg,vec2(px.x/size.x,1.-px.y/size.y)):vec4(0.);
             float imgA=1.-smoothstep(.58,.66,d);
             // Bright mould lives on the advancing front; behind it, where the window is gone, only soil crumbs remain.
