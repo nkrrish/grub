@@ -387,6 +387,14 @@ button {
   transition: transform 180ms var(--ease-out);
 }
 
+.cust-row[aria-disabled='true'] .switch {
+  opacity: 0.4;
+}
+
+.cust-row[aria-disabled='true'] {
+  cursor: default;
+}
+
 .cust-row[aria-checked='true'] .switch {
   background: var(--rot);
 }

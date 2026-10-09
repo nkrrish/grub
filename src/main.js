@@ -457,6 +457,7 @@ const DEFAULTS = {
   autoUpdateMole: true,
   lastMoleUpdate: 0,
   menuBarItems: ['disk'], // what sits next to the icon; free disk is what a cleaner is for
+  menuBarIcon: true, // can be hidden while a number shows, so Grub never vanishes from the menu bar
   menuSections: ['cpu', 'memory', 'disk', 'network', 'battery', 'apps', 'actions'],
   aiCare: true, // show AI tools cleanup when there's something to clean
   aiRetention: aiTools.DEFAULT_RETENTION,
@@ -546,8 +547,8 @@ ipcMain.handle('settings:set', (_e, patch) => {
   const { openAtLogin: _ignored, ...rest } = patch;
   const next = writeSettings(rest);
   broadcast('settings', next);
-  if ('menuBarItems' in patch) {
-    if (lastStatus) updateTrayTitle(lastStatus);
+  if ('menuBarItems' in patch || 'menuBarIcon' in patch) {
+    updateTrayTitle(lastStatus || {});
     retuneWatcher();
   }
   return { ...next, openAtLogin: app.getLoginItemSettings().openAtLogin };
@@ -752,13 +753,16 @@ function sendToWindow(channel, value) {
 }
 
 function createTray() {
-  const img = nativeImage.createFromPath(path.join(__dirname, '..', 'build', 'trayTemplate.png'));
-  img.setTemplateImage(true);
-  tray = new Tray(img);
+  trayIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'build', 'trayTemplate.png'));
+  trayIcon.setTemplateImage(true);
+  tray = new Tray(trayIcon);
   tray.setToolTip('Grub');
   tray.on('click', togglePopover);
   tray.on('right-click', togglePopover);
+  createPopover();
+}
 
+function createPopover() {
   popover = new BrowserWindow({
     width: 340,
     height: 452,
@@ -782,9 +786,17 @@ function createTray() {
   });
   popover.on('hide', retuneWatcher);
   popover.on('blur', () => popover.hide());
+  // like the window, it only really closes when Grub quits; if it's ever gone anyway, the icon builds a new one
+  popover.on('close', (e) => {
+    if (app.isQuitting) return;
+    e.preventDefault();
+    popover.hide();
+  });
+  popover.on('closed', () => (popover = null));
 }
 
 function togglePopover() {
+  if (!popover || popover.isDestroyed()) createPopover();
   if (popover.isVisible()) return popover.hide();
   const b = tray.getBounds();
   const { width } = popover.getBounds();
@@ -795,8 +807,11 @@ function togglePopover() {
   popover.focus();
 }
 
+let trayIcon;
+let trayIconShown = true;
+
 function updateTrayTitle(s) {
-  const items = readSettings().menuBarItems || [];
+  const { menuBarItems: items = [], menuBarIcon } = readSettings();
   // two bare percentages would be ambiguous, so they get labels only when both show
   const label = items.includes('cpu') && items.includes('memory');
   const parts = items
@@ -812,7 +827,13 @@ function updateTrayTitle(s) {
       return null;
     })
     .filter(Boolean);
-  tray?.setTitle(parts.length ? ` ${parts.join(' · ')}` : '', { fontType: 'monospacedDigit' });
+  // the icon only hides while there's a number to click instead
+  const showIcon = menuBarIcon !== false || !parts.length;
+  if (tray && showIcon !== trayIconShown) {
+    tray.setImage(showIcon ? trayIcon : nativeImage.createEmpty());
+    trayIconShown = showIcon;
+  }
+  tray?.setTitle(parts.length ? `${showIcon ? ' ' : ''}${parts.join(' · ')}` : '', { fontType: 'monospacedDigit' });
 }
 
 app.setName('Grub');

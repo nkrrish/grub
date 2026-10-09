@@ -21,7 +21,7 @@ const BAR_ITEMS = [
   ['memory', 'Memory', 'How full it is, like 71%'],
 ];
 
-let settings = { menuSections: SECTIONS.map(([k]) => k), menuBarItems: ['disk'] };
+let settings = { menuSections: SECTIONS.map(([k]) => k), menuBarItems: ['disk'], menuBarIcon: true };
 const cpuHistory = [];
 const netHistory = [];
 const icons = new Map();
@@ -192,6 +192,12 @@ function applySections() {
   $('.tiles').hidden = !tiles.length;
   const bar = new Set(settings.menuBarItems || []);
   $$('#cust-bar [data-bar]').forEach((b) => b.setAttribute('aria-checked', String(bar.has(b.dataset.bar))));
+  // the icon can't go while nothing else is in the menu bar, or Grub would have nowhere to click
+  const iconLocked = !bar.size;
+  const icon = $('#cust-icon');
+  icon.setAttribute('aria-checked', String(settings.menuBarIcon !== false || iconLocked));
+  icon.setAttribute('aria-disabled', String(iconLocked));
+  icon.querySelector('small').textContent = iconLocked ? 'Turn on a number below to hide it' : 'The little grub';
   $$('#cust-list [data-key]').forEach((b) => b.setAttribute('aria-checked', String(on.has(b.dataset.key))));
   fit();
 }
@@ -213,12 +219,18 @@ $('#cust-list').addEventListener('click', async (e) => {
 });
 
 $('#cust-bar').replaceChildren(
+  el('button', { class: 'cust-row', role: 'switch', 'aria-checked': 'true', id: 'cust-icon' }, el('span', {}, el('b', {}, 'Grub icon'), el('small', {}, 'The little grub')), el('i', { class: 'switch', 'aria-hidden': 'true' })),
   ...BAR_ITEMS.map(([key, label, hint]) =>
     el('button', { class: 'cust-row', role: 'switch', 'aria-checked': 'false', 'data-bar': key }, el('span', {}, el('b', {}, label), el('small', {}, hint)), el('i', { class: 'switch', 'aria-hidden': 'true' }))
   )
 );
 
 $('#cust-bar').addEventListener('click', async (e) => {
+  if (e.target.closest('#cust-icon')) {
+    if ($('#cust-icon').getAttribute('aria-disabled') === 'true') return;
+    settings = await window.mole.settings.set({ menuBarIcon: settings.menuBarIcon === false });
+    return applySections();
+  }
   const row = e.target.closest('[data-bar]');
   if (!row) return;
   const on = new Set(settings.menuBarItems || []);
