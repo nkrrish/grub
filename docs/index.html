@@ -156,8 +156,14 @@
     }
     .rot.on { opacity: 1; }
     .hero-shot .window { position: relative; }
-    .creep { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 600ms ease; }
+    .creep { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 400ms ease; }
     .creep.on { opacity: 1; }
+    /* Once the rot layer is drawing the screenshot, the window's frame goes so the eaten edges show the page. */
+    .hero-shot .window { transition: background-color 600ms ease, border-color 600ms ease, box-shadow 600ms ease; }
+    .hero-shot .window.is-rotting { overflow: visible; background: transparent; border-color: transparent; box-shadow: none; }
+    .creep { border-radius: 14px; }
+    .hero-shot .window.is-rotting img { opacity: 0; }
+    .hero-shot .window.is-rotting .creep { filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.6)); }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
     h1 { font: 600 clamp(56px, 7vw, 88px)/1 var(--display); margin: 0; letter-spacing: -0.01em; }
     h1 em { font-style: normal; color: var(--rot); }
@@ -962,7 +968,7 @@ cd grub && npm install && npm start</pre>
       const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
       const fs = `precision mediump float;
         uniform vec2 uRes;uniform float uTime;uniform float uDpr;uniform sampler2D uEat;uniform vec2 uGrid;
-        uniform float uMode;uniform float uGrow;
+        uniform float uMode;uniform float uGrow;uniform sampler2D uImg;uniform float uHasImg;
         float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
         float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
           return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
@@ -989,7 +995,7 @@ cd grub && npm install && npm start</pre>
           }else{
             // Creeps in from the window's edges: the front advances with uGrow and is roughened by the noise.
             float edge=min(min(c.x,size.x-c.x),min(c.y,size.y-c.y));
-            float reach=mix(10.,size.y*.3,uGrow);
+            float reach=mix(10.,size.y*.24,uGrow);
             mask=1.-smoothstep(reach*.55,reach,edge+(q.x-.5)*120.);
             v=v+.18;
             base=0.;
@@ -997,16 +1003,29 @@ cd grub && npm install && npm start</pre>
           // How much Grub has eaten here: half per pass of the cursor.
           float eaten=texture2D(uEat,vec2(c.x,size.y-c.y)/uGrid).r;
           v-=eaten*eaten*.62;
-          float g=smoothstep(.36,.64,v)*mask;
-          if(uMode>.5)g*=1.-eaten*eaten;
-          float r=base+(uMode<.5?.36:.46)*g;
-          float a=1.-smoothstep(r-.08,r,length(f));
           vec3 soil=vec3(.357,.275,.212),moss=vec3(.42,.52,.19),mold=vec3(.722,.89,.302);
-          vec3 col=mix(soil,mix(moss,mold,smoothstep(uMode<.5?.56:.7,uMode<.5?.8:.95,v)),smoothstep(.38,.56,v)*mask);
-          float al=uMode<.5?a*(.18+.72*g):a*min(1.,g*1.3)*.85;
-          gl_FragColor=vec4(col*al,al);
+          if(uMode<.5){
+            float g=smoothstep(.36,.64,v)*mask;
+            float r=base+.36*g;
+            float a=1.-smoothstep(r-.08,r,length(f));
+            vec3 col=mix(soil,mix(moss,mold,smoothstep(.56,.8,v)),smoothstep(.38,.56,v)*mask);
+            float al=a*(.18+.72*g);
+            gl_FragColor=vec4(col*al,al);
+          }else{
+            // The window rots away: depth d per 7px cell. Shallow rot speckles the screenshot with mould dots,
+            // deeper rot eats the cell through, so the edge crumbles in steps of the dot grid.
+            float d=mask*smoothstep(.3,.72,v)*(1.-eaten*eaten);
+            vec4 img=uHasImg>.5?texture2D(uImg,vec2(px.x/size.x,1.-px.y/size.y)):vec4(0.);
+            float imgA=1.-smoothstep(.58,.66,d);
+            // Bright mould lives on the advancing front; behind it, where the window is gone, only soil crumbs remain.
+            float front=smoothstep(.15,.45,d)*(1.-smoothstep(.6,.85,d));
+            float r=.5*smoothstep(.12,.45,d)*(1.-.7*smoothstep(.62,.9,d));
+            float da=(1.-smoothstep(r-.08,r,length(f)))*smoothstep(.12,.35,d)*mix(.55,.95,front);
+            vec3 col=mix(soil,mix(moss,mold,front),smoothstep(.1,.3,d)*(.35+.65*front));
+            gl_FragColor=vec4(col*da+img.rgb*imgA*(1.-da),da+img.a*imgA*(1.-da));
+          }
         }`;
-      const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); return gl.getShaderParameter(o, gl.COMPILE_STATUS) ? o : null; };
+      const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn('rot shader:', gl.getShaderInfoLog(o)); return null; } return o; };
       const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
       if (!v || !f) return;
       const prog = gl.createProgram();
@@ -1019,6 +1038,8 @@ cd grub && npm install && npm start</pre>
       gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
       const U = (n) => gl.getUniformLocation(prog, n);
       const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uGrid = U('uGrid'), uMode = U('uMode'), uGrow = U('uGrow');
+      const uEat = U('uEat'), uImg = U('uImg'), uHasImg = U('uHasImg');
+      gl.uniform1i(uEat, 0); gl.uniform1i(uImg, 1); gl.uniform1f(uHasImg, 0);
       gl.uniform1f(uMode, mode === 'creep' ? 1 : 0);
 
       // The eaten grid: one value per 24px cell, uploaded as a small texture and smoothed by linear filtering.
@@ -1034,7 +1055,8 @@ cd grub && npm install && npm start</pre>
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
       const resize = () => {
-        dpr = Math.min(devicePixelRatio || 1, 1.5);
+        // The window draws the screenshot itself, so it renders at full Retina sharpness.
+        dpr = Math.min(devicePixelRatio || 1, mode === 'creep' ? 2 : 1.5);
         cssW = canvas.offsetWidth; cssH = canvas.offsetHeight;
         w = Math.round(cssW * dpr); hgt = Math.round(cssH * dpr);
         canvas.width = w; canvas.height = hgt;
@@ -1081,6 +1103,7 @@ cd grub && npm install && npm start</pre>
           if (eaten[k] > 0) eaten[k] = Math.max(0, eaten[k] - dt * rate);
           bytes[k] = eaten[k] * 255;
         }
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gw, gh, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, bytes);
         gl.uniform2f(uRes, w, hgt); gl.uniform1f(uDpr, dpr); gl.uniform2f(uGrid, gw * CELL, gh * CELL);
         gl.uniform1f(uTime, time); gl.uniform1f(uGrow, still.matches ? 0.5 : growth(now));
@@ -1101,6 +1124,27 @@ cd grub && npm install && npm start</pre>
       still.addEventListener('change', sync);
       resize(); sync();
       requestAnimationFrame(() => canvas.classList.add('on'));
+
+      // The window layer draws the screenshot itself, so the rot can eat through it. Until the texture is in
+      // (or if WebGL fails) the real <img> underneath shows as usual.
+      if (mode === 'creep') {
+        const img = canvas.parentElement.querySelector('img');
+        const useImg = () => {
+          const t = gl.createTexture();
+          gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, t);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.uniform1f(uHasImg, 1);
+          canvas.parentElement.classList.add('is-rotting');
+          if (!raf) draw(40);
+        };
+        img.complete && img.naturalWidth ? useImg() : img.addEventListener('load', useImg, { once: true });
+      }
     }
     rot(document.getElementById('rot'), 'field');
     rot(document.getElementById('creep'), 'creep');
