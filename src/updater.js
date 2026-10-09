@@ -34,6 +34,7 @@ function check() {
 // never restart in the middle of a chore; it'll install on the next quit instead
 function install() {
   if (state.status !== 'ready' || isBusy()) return false;
+  app.isQuitting = true;
   autoUpdater.quitAndInstall();
   return true;
 }
@@ -49,6 +50,11 @@ function start(opts) {
     return set({ status: 'dev' });
   }
 
+  // quitAndInstall closes the windows before before-quit fires, and the main window only really closes
+  // when Grub is quitting (otherwise it hides to the menu bar), so mark it here or nothing quits
+  autoUpdater.on('before-quit-for-update', () => {
+    app.isQuitting = true;
+  });
   autoUpdater.on('checking-for-update', () => set({ status: 'checking' }));
   autoUpdater.on('update-available', () => set({ status: 'downloading' }));
   autoUpdater.on('update-not-available', () => set({ status: 'latest', checkedAt: Date.now() }));

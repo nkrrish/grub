@@ -614,6 +614,18 @@ function updateMoleQuietly() {
 
 ipcMain.handle('mole:update', updateMoleQuietly);
 
+// Asks Homebrew whether a newer Mole is out, without installing it. Reads Homebrew's cached index, so it's quick.
+ipcMain.handle('mole:outdated', async () => {
+  if (!find('mo') || !find('brew')) return { ok: false, reason: 'nobrew' };
+  const r = await run(BREW, ['outdated', '--json=v2', '--formula', 'mole'], { timeout: 60000 });
+  try {
+    const formula = JSON.parse(r.stdout).formulae?.[0];
+    return { ok: true, next: formula?.current_version || null, checkedAt: Date.now() };
+  } catch {
+    return { ok: false };
+  }
+});
+
 /* ---------- keeping Grub fresh ---------- */
 
 ipcMain.handle('grub:update:state', () => updater.state());

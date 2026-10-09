@@ -1037,6 +1037,8 @@ async function refreshVersion() {
 
 function openAbout() {
   document.body.classList.add('about-open');
+  // a fresh look at Mole when About opens, at most every 10 minutes
+  if (['idle', 'latest', 'error'].includes(moleUpdate.status) && Date.now() - moleUpdate.checkedAt > 10 * 60 * 1000) checkMole();
   $('#about-close').focus();
 }
 
@@ -1067,32 +1069,74 @@ function checked(at) {
   return `Checked ${today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' })}.`;
 }
 
-// Checking Mole updates it too when Homebrew has a newer one.
-$('#about-update').addEventListener('click', async () => {
+/* Mole's updates: Check now asks Homebrew if a newer one is out; installing it is a second, deliberate click
+   (or happens once a day when "Update Mole automatically" is on). */
+
+let moleUpdate = { status: 'idle', next: null, checkedAt: 0 };
+
+function renderMoleUpdate(patch) {
+  moleUpdate = { ...moleUpdate, ...patch };
+  const { status, next, checkedAt } = moleUpdate;
+  const text = {
+    idle: checkedAt ? `Up to date. ${checked(checkedAt)}` : 'Checks once a day with Homebrew.',
+    checking: 'Checking for a newer Mole…',
+    available: `Mole ${next} is out.`,
+    updating: `Updating to ${next || 'the newest Mole'}…`,
+    latest: `Up to date. ${checked(checkedAt)}`,
+    updated: `Updated to ${next}. ${checked(checkedAt)}`,
+    error: "Couldn't check right now. Grub will try again tomorrow.",
+    nobrew: 'Checking needs Homebrew.',
+  }[status];
+  $('#about-mole-status').textContent = text;
   const btn = $('#about-update');
-  btn.disabled = true;
-  $('#about-mole-status').textContent = 'Checking for a newer Mole…';
-  const r = await window.mole.updateMole();
-  btn.disabled = false;
-  if (!r) $('#about-mole-status').textContent = 'Checking needs Homebrew.';
+  if (status === 'available') setUpdateButton(btn, `Update to ${next}`, { icon: 'download', primary: true });
+  else if (status === 'updating') setUpdateButton(btn, 'Updating…', { icon: 'download', enabled: false });
+  else setUpdateButton(btn, status === 'checking' ? 'Checking…' : 'Check now', { enabled: status !== 'checking' && status !== 'nobrew' });
+  // an <svg> has no .hidden property, so set the attribute itself
+  $('#mole-update-glyph').toggleAttribute('hidden', status !== 'available');
+}
+
+async function checkMole() {
+  renderMoleUpdate({ status: 'checking' });
+  const r = await window.mole.moleOutdated();
+  if (!r.ok) return renderMoleUpdate({ status: r.reason === 'nobrew' ? 'nobrew' : 'error' });
+  renderMoleUpdate(r.next ? { status: 'available', next: r.next } : { status: 'latest', next: null, checkedAt: r.checkedAt });
+}
+
+$('#about-update').addEventListener('click', async () => {
+  if (moleUpdate.status !== 'available') return checkMole();
+  renderMoleUpdate({ status: 'updating' });
+  if (!(await window.mole.updateMole())) renderMoleUpdate({ status: 'nobrew' });
 });
 
 /* Grub's own updates: the updater in main checks every few hours; About shows where it's at. */
 
 
+// Both rows in About share one button shape: a label, an optional icon, and lime when there's something to do.
+function setUpdateButton(btn, label, { icon = null, enabled = true, primary = false } = {}) {
+  btn.querySelector('[id$="-label"]').textContent = label;
+  if (icon) btn.dataset.icon = icon;
+  else delete btn.dataset.icon;
+  btn.disabled = !enabled;
+  btn.classList.toggle('btn-primary', primary);
+  btn.classList.toggle('btn-quiet', !primary);
+  btn.closest('.about-version').classList.toggle('is-ready', primary);
+}
+
+// status: [text, button label, icon, clickable]
 const GRUB_UPDATE = {
-  dev: ['Updates come with the released app.', null],
-  idle: ['Checks for updates on its own.', 'Check now'],
-  checking: ['Checking for a newer Grub…', null],
-  downloading: ['Downloading a newer Grub…', null],
-  latest: ['Up to date. Checked just now.', 'Check now'],
-  error: ["Couldn't check right now. Grub will try again later.", 'Check now'],
-  ready: [null, 'Restart to update'],
+  dev: ['Updates come with the released app.', 'Check now', null, false],
+  idle: ['Checks for updates on its own.', 'Check now', null, true],
+  checking: ['Checking for a newer Grub…', 'Checking…', null, false],
+  downloading: ['A newer Grub is downloading.', 'Downloading…', 'download', false],
+  latest: ['Up to date. Checked just now.', 'Check now', null, true],
+  error: ["Couldn't check right now. Grub will try again later.", 'Check now', null, true],
+  ready: [null, 'Restart to update', 'restart', true],
 };
 
 function renderGrubUpdate(s) {
   grubUpdate = s;
-  const [text, action] = GRUB_UPDATE[s.status] || GRUB_UPDATE.idle;
+  const [text, label, icon, enabled] = GRUB_UPDATE[s.status] || GRUB_UPDATE.idle;
   const ready = s.status === 'ready';
   $('#about-grub').textContent = `Grub ${s.version}`;
   $('#about-grub-status').textContent = ready
@@ -1103,34 +1147,35 @@ function renderGrubUpdate(s) {
   const btn = $('#about-grub-update');
   // .btn sets display, which beats the hidden attribute
   btn.style.display = s.status === 'dev' ? 'none' : '';
-  btn.disabled = !action;
-  btn.textContent = action || 'Check now';
-  btn.classList.toggle('btn-primary', ready);
-  btn.classList.toggle('btn-quiet', !ready);
-  $('#grub-update-badge').hidden = !ready;
+  setUpdateButton(btn, label, { icon, enabled, primary: ready });
+  $('#update-card').hidden = !ready;
+  $('#update-card-note').textContent = s.next ? `Restart for ${s.next}` : 'Restart to install it';
   refreshVersion();
 }
 
+async function installGrubUpdate() {
+  const ok = await window.mole.grubUpdate.install();
+  if (ok) return;
+  openAbout();
+  $('#about-grub-status').textContent = 'Finish the chore that’s running first, then restart.';
+}
+
 $('#about-grub-update').addEventListener('click', async () => {
-  if (grubUpdate.status === 'ready') {
-    const ok = await window.mole.grubUpdate.install();
-    if (!ok) $('#about-grub-status').textContent = 'Finish the chore that’s running first, then restart.';
-    return;
-  }
+  if (grubUpdate.status === 'ready') return installGrubUpdate();
   renderGrubUpdate(await window.mole.grubUpdate.check());
 });
+$('#update-card').addEventListener('click', installGrubUpdate);
 
 window.mole.grubUpdate.onChange(renderGrubUpdate);
 window.mole.grubUpdate.state().then(renderGrubUpdate);
 
+// fires after Update to…, and after the daily automatic update
 window.mole.onMoleUpdated((r) => {
   const before = $('#about-mole').textContent;
   const now = (r.version?.match(/\d+\.\d+\.\d+/) || [''])[0];
-  $('#about-mole-status').textContent = !r.ok
-    ? "Couldn't check right now. Grub will try again tomorrow."
-    : now && before !== 'Mole' && before !== `Mole ${now}`
-      ? `Updated to ${now}. ${checked(Date.now())}`
-      : `Up to date. ${checked(Date.now())}`;
+  if (!r.ok) renderMoleUpdate({ status: 'error' });
+  else if (now && before !== 'Mole' && before !== `Mole ${now}`) renderMoleUpdate({ status: 'updated', next: now, checkedAt: Date.now() });
+  else renderMoleUpdate({ status: 'latest', checkedAt: Date.now() });
   refreshVersion();
 });
 
@@ -1236,7 +1281,9 @@ function startOnboarding() {
 (async () => {
   settings = await window.mole.settings.get();
   await saveSetting({});
-  if (settings.lastMoleUpdate) $('#about-mole-status').textContent = `Up to date. ${checked(settings.lastMoleUpdate)}`;
+  renderMoleUpdate({ checkedAt: settings.lastMoleUpdate || 0 });
+  // let the sidebar show when a newer Mole is out, without opening About
+  if (await window.mole.available()) setTimeout(checkMole, 20000);
   digState.home = await window.mole.home();
   window.mole.onStatus(renderStatus);
   renderChore('clean');

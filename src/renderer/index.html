@@ -101,10 +101,14 @@
           <span class="run-chip-text" id="run-chip-text"></span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </button>
+        <button class="update-card" id="update-card" hidden>
+          <span class="update-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" /></svg></span>
+          <span class="update-card-text"><b>Update ready</b><small id="update-card-note">Restart to install it</small></span>
+        </button>
         <button class="sidebar-foot" id="about-open" aria-label="About Grub and its engine">
           <span class="dot" id="mole-dot"></span>
-          <span id="mole-version">Looking for Mole…</span>
-          <span class="foot-badge" id="grub-update-badge" hidden>Update ready</span>
+          <span class="foot-version" id="mole-version">Looking for Mole…</span>
+          <svg class="foot-glyph" id="mole-update-glyph" viewBox="0 0 24 24" hidden><title>A newer Mole is out</title><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
         </button>
       </aside>
 
@@ -477,11 +481,11 @@
       <p class="about-by">Made by <a href="#" data-link="https://naguleskrrish.com/">Nagules Krrish</a> at <a href="#" data-link="https://attechy.com/">Attechy</a>.</p>
       <div class="about-version">
         <div><b id="about-grub">Grub</b><span id="about-grub-status" aria-live="polite">Checks for updates on its own.</span></div>
-        <button class="btn btn-quiet" id="about-grub-update">Check now</button>
+        <button class="btn btn-quiet" id="about-grub-update"><span class="btn-label"><svg class="btn-glyph" data-glyph="restart" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" /></svg><svg class="btn-glyph" data-glyph="download" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg><span id="about-grub-label">Check now</span></span></button>
       </div>
       <div class="about-version">
         <div><b id="about-mole">Mole</b><span id="about-mole-status">Checks once a day with Homebrew.</span></div>
-        <button class="btn btn-quiet" id="about-update">Check now</button>
+        <button class="btn btn-quiet" id="about-update"><span class="btn-label"><svg class="btn-glyph" data-glyph="download" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg><span id="about-mole-label">Check now</span></span></button>
       </div>
       <div class="pref">
         <div><b>Update Mole automatically</b><span>Once a day, quietly. Grub updates itself either way.</span></div>
