@@ -155,6 +155,9 @@
       mask-image: linear-gradient(180deg, transparent 0, #000 60px, #000 calc(100% - 220px), transparent);
     }
     .rot.on { opacity: 1; }
+    .hero-shot .window { position: relative; }
+    .creep { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 600ms ease; }
+    .creep.on { opacity: 1; }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; }
     h1 { font: 600 clamp(56px, 7vw, 88px)/1 var(--display); margin: 0; letter-spacing: -0.01em; }
     h1 em { font-style: normal; color: var(--rot); }
@@ -590,6 +593,7 @@
         </div>
         <div class="hero-shot">
           <div class="window">
+            <canvas class="creep" id="creep" aria-hidden="true"></canvas>
             <img src="shots/status.webp" width="2336" height="1560" alt="Grub's Status screen: a health score, disk space, CPU, memory and battery" fetchpriority="high">
           </div>
         </div>
@@ -946,43 +950,60 @@ cd grub && npm install && npm start</pre>
       schedule();
     })();
 
-    // Hero background: mould spreading through a dot grid. Runs only while the hero is on screen and the tab
-    // is visible; Reduce Motion gets one still frame; no WebGL keeps the plain background.
-    (function rot() {
-      const canvas = document.getElementById('rot');
+    // Rot: mould spreading through a dot grid, drawn with a small WebGL shader. Two layers use it:
+    //  - 'field' fills the hero background, kept clear behind the headline;
+    //  - 'creep' sits on the app screenshot and grows in from the window's edges over time.
+    // The cursor is Grub: each pass over a spot eats half the mould there, so it takes two passes to clear,
+    // and once the cursor rests the mould grows back. Layers only run while on screen and the tab is in
+    // front; Reduce Motion gets one still frame; without WebGL the page just has no rot.
+    function rot(canvas, mode) {
       const gl = canvas.getContext('webgl', { premultipliedAlpha: true, antialias: false, alpha: true });
       if (!gl) return;
       const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
       const fs = `precision mediump float;
-        uniform vec2 uRes;uniform float uTime;uniform float uDpr;uniform vec3 uTrail[32];
+        uniform vec2 uRes;uniform float uTime;uniform float uDpr;uniform sampler2D uEat;uniform vec2 uGrid;
+        uniform float uMode;uniform float uGrow;
         float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
         float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
           return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
         float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
         void main(){
           vec2 px=gl_FragCoord.xy/uDpr;
-          float cell=9.;
+          vec2 size=uRes/uDpr;
+          float cell=uMode<.5?9.:7.;
           vec2 id=floor(px/cell),f=fract(px/cell)-.5;
           vec2 c=(id+.5)*cell;
           vec2 p=c/240.;
           float t=uTime*.035;
           vec2 q=vec2(fbm(p+vec2(t,0.)),fbm(p+vec2(5.2,1.3)-t));
           float v=fbm(p+1.9*q+vec2(.5*t,-.3*t));
-          vec2 uv=c/(uRes/uDpr);
-          // A soft clearing behind the headline; everywhere else the rot is free to grow.
-          vec2 e=(uv-vec2(.17,.47))*vec2(1.,1.1);
-          float mask=smoothstep(.26,.46,length(e));
-          // Grub eats the rot along the cursor's trail; each bite fades as the mould grows back.
-          float eaten=0.;
-          for(int i=0;i<32;i++){vec3 b=uTrail[i];vec2 d=(c-b.xy)/95.;eaten=max(eaten,b.z*exp(-dot(d,d)*2.2));}
-          v-=eaten*.55;
+          vec2 uv=c/size;
+          float mask,base;
+          if(uMode<.5){
+            // A soft clearing behind the headline; everywhere else the rot is free to grow.
+            vec2 e=(uv-vec2(.17,.47))*vec2(1.,1.1);
+            mask=smoothstep(.26,.46,length(e));
+            // Thinner behind the nav bar, so its links stay easy to read.
+            mask*=mix(.35,1.,smoothstep(70.,180.,size.y-c.y));
+            base=.1;
+          }else{
+            // Creeps in from the window's edges: the front advances with uGrow and is roughened by the noise.
+            float edge=min(min(c.x,size.x-c.x),min(c.y,size.y-c.y));
+            float reach=mix(10.,size.y*.3,uGrow);
+            mask=1.-smoothstep(reach*.55,reach,edge+(q.x-.5)*120.);
+            v=v+.18;
+            base=0.;
+          }
+          // How much Grub has eaten here: half per pass of the cursor.
+          float eaten=texture2D(uEat,vec2(c.x,size.y-c.y)/uGrid).r;
+          v-=eaten*eaten*.62;
           float g=smoothstep(.36,.64,v)*mask;
-          // Every cell keeps a tiny soil dot; mould swells it up to almost touching its neighbours.
-          float r=.1+.36*g;
+          if(uMode>.5)g*=1.-eaten*eaten;
+          float r=base+(uMode<.5?.36:.46)*g;
           float a=1.-smoothstep(r-.08,r,length(f));
           vec3 soil=vec3(.357,.275,.212),moss=vec3(.42,.52,.19),mold=vec3(.722,.89,.302);
-          vec3 col=mix(soil,mix(moss,mold,smoothstep(.56,.8,v)),smoothstep(.38,.56,v)*mask);
-          float al=a*(.18+.72*g);
+          vec3 col=mix(soil,mix(moss,mold,smoothstep(uMode<.5?.56:.7,uMode<.5?.8:.95,v)),smoothstep(.38,.56,v)*mask);
+          float al=uMode<.5?a*(.18+.72*g):a*min(1.,g*1.3)*.85;
           gl_FragColor=vec4(col*al,al);
         }`;
       const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); return gl.getShaderParameter(o, gl.COMPILE_STATUS) ? o : null; };
@@ -997,44 +1018,74 @@ cd grub && npm install && npm start</pre>
       const loc = gl.getAttribLocation(prog, 'p');
       gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
       const U = (n) => gl.getUniformLocation(prog, n);
-      const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uTrail = U('uTrail');
+      const uRes = U('uRes'), uTime = U('uTime'), uDpr = U('uDpr'), uGrid = U('uGrid'), uMode = U('uMode'), uGrow = U('uGrow');
+      gl.uniform1f(uMode, mode === 'creep' ? 1 : 0);
 
-      let dpr = 1, w = 0, hgt = 0;
+      // The eaten grid: one value per 24px cell, uploaded as a small texture and smoothed by linear filtering.
+      const CELL = 24, BITE = mode === 'creep' ? 60 : 70;
+      let dpr = 1, w = 0, hgt = 0, cssW = 0, cssH = 0;
+      let gw = 1, gh = 1, eaten = new Float32Array(1), inside = new Uint8Array(1), bytes = new Uint8Array(1);
+      const held = [];
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
       const resize = () => {
         dpr = Math.min(devicePixelRatio || 1, 1.5);
-        const r = canvas.getBoundingClientRect();
-        w = Math.round(r.width * dpr); hgt = Math.round(r.height * dpr);
+        cssW = canvas.offsetWidth; cssH = canvas.offsetHeight;
+        w = Math.round(cssW * dpr); hgt = Math.round(cssH * dpr);
         canvas.width = w; canvas.height = hgt;
         gl.viewport(0, 0, w, hgt);
+        gw = Math.ceil(cssW / CELL); gh = Math.ceil(cssH / CELL);
+        eaten = new Float32Array(gw * gh); inside = new Uint8Array(gw * gh); bytes = new Uint8Array(gw * gh); held.length = 0;
       };
-      // The cursor is Grub: it eats the rot as it moves. Bites stay clear while you keep moving,
-      // then the mould grows back once the cursor rests.
-      const N = 32, trail = new Float32Array(N * 3);
-      let head = 0, lastX = -1e4, lastY = -1e4, lastMove = 0, prev = performance.now();
-      const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
-      if (fine) {
+
+      let lastMove = 0, prev = performance.now();
+      if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
         addEventListener('pointermove', (e) => {
           const r = canvas.getBoundingClientRect();
-          const x = e.clientX - r.left, y = r.height - (e.clientY - r.top);
-          if (y < -100 || y > r.height + 100) return;
+          // Map into the canvas's own (untransformed) coordinates, so the tilted hero window still lines up.
+          const x = (e.clientX - r.left) * (cssW / r.width), y = (e.clientY - r.top) * (cssH / r.height);
           lastMove = performance.now();
-          if (Math.hypot(x - lastX, y - lastY) < 14) return;
-          lastX = x; lastY = y;
-          trail.set([x, y, 1], head * 3);
-          head = (head + 1) % N;
+          // Cells the cursor has moved away from are ready to be bitten again on the next pass.
+          for (let n = held.length - 1; n >= 0; n--) {
+            const k = held[n], i = k % gw, j = (k / gw) | 0;
+            if (Math.hypot((i + 0.5) * CELL - x, (j + 0.5) * CELL - y) > BITE * 1.2) { inside[k] = 0; held.splice(n, 1); }
+          }
+          const x0 = Math.max(0, Math.floor((x - BITE) / CELL)), x1 = Math.min(gw - 1, Math.floor((x + BITE) / CELL));
+          const y0 = Math.max(0, Math.floor((y - BITE) / CELL)), y1 = Math.min(gh - 1, Math.floor((y + BITE) / CELL));
+          for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
+            const k = j * gw + i;
+            if (!inside[k] && Math.hypot((i + 0.5) * CELL - x, (j + 0.5) * CELL - y) < BITE) {
+              inside[k] = 1; held.push(k); eaten[k] = Math.min(1, eaten[k] + 0.5);
+            }
+          }
         }, { passive: true });
+        document.addEventListener('pointerleave', () => { inside.fill(0); held.length = 0; });
       }
+
+      // The creep grows in over ~25s after the page settles; the background field is fully grown from the start.
+      const born = performance.now();
+      const growth = (now) => (mode === 'creep' ? Math.min(1, Math.max(0, (now - born - 2500) / 25000)) : 1);
       const draw = (time) => {
         const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000);
         prev = now;
-        const resting = now - lastMove > 700;
-        for (let i = 2; i < trail.length; i += 3) trail[i] = Math.max(0, trail[i] - dt * (resting ? 0.45 : 0.06));
-        gl.uniform2f(uRes, w, hgt); gl.uniform1f(uDpr, dpr);
-        gl.uniform1f(uTime, time); gl.uniform3fv(uTrail, trail);
+        const rate = now - lastMove > 700 ? (mode === 'creep' ? 0.12 : 0.4) : 0.03;
+        for (let k = 0; k < eaten.length; k++) {
+          if (eaten[k] > 0) eaten[k] = Math.max(0, eaten[k] - dt * rate);
+          bytes[k] = eaten[k] * 255;
+        }
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gw, gh, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, bytes);
+        gl.uniform2f(uRes, w, hgt); gl.uniform1f(uDpr, dpr); gl.uniform2f(uGrid, gw * CELL, gh * CELL);
+        gl.uniform1f(uTime, time); gl.uniform1f(uGrow, still.matches ? 0.5 : growth(now));
         gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       };
-      let raf = 0, inView = true, start = performance.now() - 40000;
+      let raf = 0, inView = true;
+      const start = performance.now() - (mode === 'creep' ? 12000 : 40000);
       const loop = (now) => { draw((now - start) / 1000); raf = requestAnimationFrame(loop); };
       const sync = () => {
         cancelAnimationFrame(raf); raf = 0;
@@ -1047,8 +1098,9 @@ cd grub && npm install && npm start</pre>
       still.addEventListener('change', sync);
       resize(); sync();
       requestAnimationFrame(() => canvas.classList.add('on'));
-    })();
-
+    }
+    rot(document.getElementById('rot'), 'field');
+    rot(document.getElementById('creep'), 'creep');
     // Nav turns into a floating bar once the page has scrolled under it. A sentinel avoids a scroll listener.
     const nav = document.getElementById('nav');
     const sentinel = document.createElement('div');
