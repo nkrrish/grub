@@ -1073,7 +1073,10 @@ cd grub && npm install && npm start</pre>
       const draw = (time) => {
         const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000);
         prev = now;
-        const rate = now - lastMove > 700 ? (mode === 'creep' ? 0.12 : 0.4) : 0.03;
+        // Mould always grows back: steadily while the cursor moves (so a long browse doesn't strip the page),
+        // faster once it rests. The window creep regrows more slowly so cleaning it feels worth it.
+        const resting = now - lastMove > 700;
+        const rate = mode === 'creep' ? (resting ? 0.12 : 0.05) : (resting ? 0.45 : 0.16);
         for (let k = 0; k < eaten.length; k++) {
           if (eaten[k] > 0) eaten[k] = Math.max(0, eaten[k] - dt * rate);
           bytes[k] = eaten[k] * 255;
