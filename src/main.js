@@ -697,6 +697,7 @@ ipcMain.handle('link:open', (_e, url) => /^https:\/\/((grub\.)?attechy\.com|nagu
 ipcMain.handle('grub:update:state', () => updater.state());
 ipcMain.handle('grub:update:check', () => updater.check());
 ipcMain.handle('grub:update:install', () => updater.install());
+ipcMain.handle('grub:update:log', () => shell.showItemInFolder(updater.logFile()));
 
 /* ---------- data ---------- */
 

@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld('mole', {
     state: () => ipcRenderer.invoke('grub:update:state'),
     check: () => ipcRenderer.invoke('grub:update:check'),
     install: () => ipcRenderer.invoke('grub:update:install'),
+    showLog: () => ipcRenderer.invoke('grub:update:log'),
     onChange: on('grub:update'),
   },
   app: {

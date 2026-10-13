@@ -1034,11 +1034,9 @@ let grubUpdate = {};
 async function refreshVersion() {
   const v = await window.mole.version();
   const num = (v.match(/\d+\.\d+\.\d+/) || [''])[0];
-  const grub = grubUpdate.version ? `Grub ${grubUpdate.version} · ` : '';
-  $('#mole-version').textContent = grub + (num ? `Mole ${num}` : 'Mole is missing');
-  $('#about-mole').textContent = num ? `Mole ${num}` : 'Mole';
-  // Mole lives inside Grub.app, so the only way to lose it is a damaged copy of Grub
-  $('#about-mole-status').textContent = num ? 'Comes with Grub, tested with this version, and updates with it.' : 'Grub’s copy of Mole is missing. Download Grub again to fix it.';
+  const grub = grubUpdate.version ? `Grub ${grubUpdate.version}` : 'Grub';
+  // Mole is part of Grub, so only Grub's version shows; Mole is named only if Grub's copy is gone (a damaged download)
+  $('#mole-version').textContent = num ? grub : `${grub} · Mole is missing`;
   $('#mole-dot').classList.toggle('is-on', !!num);
 }
 
@@ -1109,6 +1107,15 @@ function renderGrubUpdate(s) {
     : s.status === 'latest' && s.checkedAt
       ? `Up to date. ${checked(s.checkedAt)}`
       : text;
+  // the last Restart to update didn't land; the updater can't be trusted to notice, so point at the download
+  if (s.failedTo && !ready && s.status !== 'downloading')
+    $('#about-grub-status').replaceChildren(
+      `Couldn’t finish updating to ${s.failedTo}. `,
+      el('a', { href: '#', onclick: (e) => (e.preventDefault(), window.mole.openLink('https://grub.attechy.com/')) }, 'Download it'),
+      ' or ',
+      el('a', { href: '#', onclick: (e) => (e.preventDefault(), window.mole.grubUpdate.showLog()) }, 'show the log'),
+      '.'
+    );
   const btn = $('#about-grub-update');
   // .btn sets display, which beats the hidden attribute
   btn.style.display = s.status === 'dev' ? 'none' : '';

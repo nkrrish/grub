@@ -1789,7 +1789,8 @@ button.sidebar-foot {
   width: 440px;
 }
 
-.about p a {
+.about p a,
+.about-version span a {
   color: var(--rot);
 }
 
