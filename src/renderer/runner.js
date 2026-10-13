@@ -177,7 +177,6 @@ const text = (v, opts) => (typeof v === 'function' ? v(opts) : v);
 /* ---------- running ---------- */
 
 let run = null; // { opts, key, handled: {}, busy, exited, code }
-let quietResolve = null;
 
 // Where a task's progress screen lives, so the user can leave and come back to it.
 function originOf(opts) {
@@ -188,7 +187,7 @@ function originOf(opts) {
 }
 
 function isRunHome(view, chore) {
-  if (!run || run.quiet || run.dismissed) return false;
+  if (!run || run.dismissed) return false;
   return run.origin.view === view && (view !== 'chores' || run.origin.chore === chore);
 }
 
@@ -234,17 +233,6 @@ async function runTask(opts) {
   await window.mole.session.start({ ...opts, cols: term.cols, rows: term.rows });
 }
 
-// For background chores like installing the engine: no run screen, just the exit code.
-function runQuiet(opts) {
-  ensureTerm();
-  term.reset();
-  run = { opts, key: 'quiet', handled: {}, quiet: true, exited: false };
-  return new Promise((resolve) => {
-    quietResolve = resolve;
-    window.mole.session.start({ ...opts, cols: term.cols, rows: term.rows });
-  });
-}
-
 function stopTask() {
   // freeze Grub straight away; the summary follows when the process exits
   run.stopping = true;
@@ -266,7 +254,7 @@ function goToRun() {
 
 // Shows the run screen on its home page, and the sidebar chip everywhere else.
 function syncRunner() {
-  const live = run && !run.quiet && !run.dismissed;
+  const live = run && !run.dismissed;
   const home = live && isRunHome(current.view, current.chore);
   $('#runner').hidden = !home;
   $$('.nav-item').forEach((b) => b.classList.remove('is-busy'));
@@ -306,7 +294,7 @@ let quietTimer;
 function tickQuiet() {
   const note = $('#run-quiet');
   const waiting = document.body.classList.contains('ask-open') || run?.picker || run?.busy;
-  if (!run || run.exited || run.quiet || waiting || Date.now() - lastData < 10000) {
+  if (!run || run.exited || waiting || Date.now() - lastData < 10000) {
     note.hidden = true;
     if (!run || run.exited) clearInterval(quietTimer);
     return;
@@ -350,13 +338,8 @@ function onExit(code) {
     window.mole.dropCache([
       'analyze:',
       ...(run.opts.command === 'uninstall' ? ['apps'] : []),
-      ...(run.opts.tool === 'brew' || run.opts.command === 'update' ? ['updates'] : []),
+      ...(run.opts.tool === 'brew' ? ['updates'] : []),
     ]);
-  }
-  if (run.quiet) {
-    quietResolve?.(code);
-    quietResolve = null;
-    return;
   }
   if (document.body.classList.contains('ask-open')) closeAsk('cancel');
   if ($('#run-body .pick-list')) $('#run-body').replaceChildren();
@@ -543,13 +526,11 @@ function parseNow() {
   if (!run || !term) return;
   if (run.busy) return;
   const active = bufferLines();
-  if (!run.quiet) {
-    const normal = term.buffer.active.type === 'normal' ? active : bufferLines(term.buffer.normal);
-    run.model = parseProgress(normal);
-    if (!run.exited) {
-      renderProgress(run.model);
-      if (run.model.activity) $('#run-activity').textContent = run.model.activity + (run.model.activity.endsWith('…') || run.model.activity.endsWith('...') ? '' : '…');
-    }
+  const normal = term.buffer.active.type === 'normal' ? active : bufferLines(term.buffer.normal);
+  run.model = parseProgress(normal);
+  if (!run.exited) {
+    renderProgress(run.model);
+    if (run.model.activity) $('#run-activity').textContent = run.model.activity + (run.model.activity.endsWith('…') || run.model.activity.endsWith('...') ? '' : '…');
   }
   if (!run.exited) handlePrompts(active);
 }

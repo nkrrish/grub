@@ -18,14 +18,18 @@ const ENV = {
   LANG: process.env.LANG || 'en_US.UTF-8',
 };
 const find = (name) => ['/opt/homebrew/bin/', '/usr/local/bin/'].map((d) => d + name).find((p) => fs.existsSync(p));
-// re-resolved on each use so a fresh `brew install mole` is picked up
-const mo = () => find('mo') || 'mo';
 const BREW = find('brew') || 'brew';
+// Mole ships inside Grub, pinned in mole.lock.json, so a Mole update can't change what Grub reads.
+// The released app has it in Resources; `npm start` uses the copy scripts/fetch-mole.js put in vendor/.
+const MOLE = app.isPackaged
+  ? path.join(process.resourcesPath, 'mole', 'mole')
+  : path.join(__dirname, '..', 'vendor', 'mole', process.arch, 'mole', 'mole');
+const mo = () => MOLE;
 const UID = os.userInfo().uid;
 const HOME = os.homedir();
 
 // Only these mo subcommands can reach the shell.
-const MO_COMMANDS = ['clean', 'optimize', 'purge', 'installer', 'uninstall', 'update'];
+const MO_COMMANDS = ['clean', 'optimize', 'purge', 'installer', 'uninstall'];
 const SAFE_NAME = /^[\w@.+\/ -]+$/;
 
 let win;
@@ -547,8 +551,6 @@ ipcMain.handle('schedule:remove', (_e, id) => scheduler.removeReport(id));
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
 const DEFAULTS = {
   onboarded: false,
-  autoUpdateMole: true,
-  lastMoleUpdate: 0,
   menuBarItems: ['disk'], // what sits next to the icon; free disk is what a cleaner is for
   menuBarIcon: true, // can be hidden while a number shows, so Grub never vanishes from the menu bar
   alerts: true, // warn when space or memory runs low, and look for savings once a day
@@ -563,6 +565,9 @@ function readSettings() {
     const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE(), 'utf8'));
     // 0.1.x had one on/off switch for the numbers; off still means icon only
     if (!saved.menuBarItems && saved.menuBarText === false) saved.menuBarItems = [];
+    // 0.1.7 and earlier updated a Homebrew Mole; Mole now comes with Grub
+    delete saved.autoUpdateMole;
+    delete saved.lastMoleUpdate;
     return { ...DEFAULTS, ...saved };
   } catch {
     return { ...DEFAULTS };
@@ -681,46 +686,11 @@ async function automationState() {
   return /-1743|not authori[sz]ed/i.test(r.stderr) ? 'denied' : 'unknown';
 }
 
-ipcMain.handle('perm:check', async () => ({
-  mole: !!find('mo'),
-  brew: !!find('brew'),
-  fullDisk: hasFullDiskAccess(),
-}));
+ipcMain.handle('perm:check', async () => ({ fullDisk: hasFullDiskAccess() }));
 // Asking System Events for anything triggers the one-time macOS prompt.
 ipcMain.handle('perm:automation', automationState);
 ipcMain.handle('perm:open', (_e, pane) => PANES[pane] && shell.openExternal(PANES[pane]));
 ipcMain.handle('link:open', (_e, url) => /^https:\/\/((grub\.)?attechy\.com|naguleskrrish\.com|github\.com|brew\.sh)\//.test(url) && shell.openExternal(url));
-
-/* ---------- keeping Mole fresh ---------- */
-
-let moleUpdating = null;
-
-function updateMoleQuietly() {
-  if (moleUpdating || !find('mo') || !find('brew')) return moleUpdating;
-  moleUpdating = run(BREW, ['upgrade', 'mole'], { timeout: 600000 }).then(async (r) => {
-    moleUpdating = null;
-    writeSettings({ lastMoleUpdate: Date.now() });
-    const version = (await run(mo(), ['--version'])).stdout.trim();
-    const result = { ok: !r.err || /already installed/i.test(r.stderr), version };
-    broadcast('mole:updated', result);
-    return result;
-  });
-  return moleUpdating;
-}
-
-ipcMain.handle('mole:update', updateMoleQuietly);
-
-// Asks Homebrew whether a newer Mole is out, without installing it. Reads Homebrew's cached index, so it's quick.
-ipcMain.handle('mole:outdated', async () => {
-  if (!find('mo') || !find('brew')) return { ok: false, reason: 'nobrew' };
-  const r = await run(BREW, ['outdated', '--json=v2', '--formula', 'mole'], { timeout: 60000 });
-  try {
-    const formula = JSON.parse(r.stdout).formulae?.[0];
-    return { ok: true, next: formula?.current_version || null, checkedAt: Date.now() };
-  } catch {
-    return { ok: false };
-  }
-});
 
 /* ---------- keeping Grub fresh ---------- */
 
@@ -730,7 +700,7 @@ ipcMain.handle('grub:update:install', () => updater.install());
 
 /* ---------- data ---------- */
 
-ipcMain.handle('mole:available', () => !!find('mo'));
+ipcMain.handle('mole:available', () => fs.existsSync(MOLE));
 ipcMain.handle('mole:version', async () => (await run(mo(), ['--version'])).stdout.trim());
 ipcMain.handle('mole:analyze', (_e, target, fresh) =>
   cached('analyze:' + (target || HOME), fresh, () => runJson(mo(), ['analyze', '--json', target || HOME], { timeout: 300000 }))
@@ -937,7 +907,7 @@ app.whenReady().then(() => {
   if (process.platform === 'darwin' && fs.existsSync(icon)) app.dock.setIcon(nativeImage.createFromPath(icon));
   createWindow();
   createTray();
-  if (find('mo')) startWatcher();
+  if (fs.existsSync(MOLE)) startWatcher();
   // a clean cut off by quitting gives the person's Mole whitelist back
   sweep.restoreWhitelist();
   setInterval(dailyLook, 10 * 60e3);
@@ -945,8 +915,6 @@ app.whenReady().then(() => {
   updateDockBadge(scheduler.get());
   // a run missed while the lid was shut catches up shortly after waking
   powerMonitor.on('resume', () => scheduler.wake());
-  const { autoUpdateMole, lastMoleUpdate } = readSettings();
-  if (autoUpdateMole && Date.now() - lastMoleUpdate > 24 * 3600 * 1000) setTimeout(updateMoleQuietly, 15000);
   updater.start({ isBusy: () => !!session, onChange: (state) => broadcast('grub:update', state) });
 });
 app.on('activate', showWindow);

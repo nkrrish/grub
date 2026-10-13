@@ -1019,16 +1019,12 @@ async function saveSetting(patch) {
   settings = await window.mole.settings.set(patch);
   setSwitch($('#pref-login'), settings.openAtLogin);
   setSwitch($('#about-login'), settings.openAtLogin);
-  setSwitch($('#pref-update'), settings.autoUpdateMole);
-  setSwitch($('#about-auto'), settings.autoUpdateMole);
   setSwitch($('#about-alerts'), settings.alerts !== false);
 }
 
 for (const [id, key] of [
   ['#pref-login', 'openAtLogin'],
   ['#about-login', 'openAtLogin'],
-  ['#pref-update', 'autoUpdateMole'],
-  ['#about-auto', 'autoUpdateMole'],
 ])
   $(id).addEventListener('click', () => saveSetting({ [key]: !settings[key] }));
 $('#about-alerts').addEventListener('click', () => saveSetting({ alerts: settings.alerts === false }));
@@ -1039,15 +1035,15 @@ async function refreshVersion() {
   const v = await window.mole.version();
   const num = (v.match(/\d+\.\d+\.\d+/) || [''])[0];
   const grub = grubUpdate.version ? `Grub ${grubUpdate.version} · ` : '';
-  $('#mole-version').textContent = grub + (num ? `Mole ${num}` : 'Mole');
+  $('#mole-version').textContent = grub + (num ? `Mole ${num}` : 'Mole is missing');
   $('#about-mole').textContent = num ? `Mole ${num}` : 'Mole';
+  // Mole lives inside Grub.app, so the only way to lose it is a damaged copy of Grub
+  $('#about-mole-status').textContent = num ? 'Comes with Grub, tested with this version, and updates with it.' : 'Grub’s copy of Mole is missing. Download Grub again to fix it.';
   $('#mole-dot').classList.toggle('is-on', !!num);
 }
 
 function openAbout() {
   document.body.classList.add('about-open');
-  // a fresh look at Mole when About opens, at most every 10 minutes
-  if (['idle', 'latest', 'error'].includes(moleUpdate.status) && Date.now() - moleUpdate.checkedAt > 10 * 60 * 1000) checkMole();
   $('#about-close').focus();
 }
 
@@ -1071,57 +1067,17 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('about-open')) closeAbout();
 });
 
-// "Checked 15:33" today, "Checked 8 Oct" before that; both rows in About use it.
+// "Checked 15:33" today, "Checked 8 Oct" before that.
 function checked(at) {
   const d = new Date(at);
   const today = d.toDateString() === new Date().toDateString();
   return `Checked ${today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' })}.`;
 }
 
-/* Mole's updates: Check now asks Homebrew if a newer one is out; installing it is a second, deliberate click
-   (or happens once a day when "Update Mole automatically" is on). */
-
-let moleUpdate = { status: 'idle', next: null, checkedAt: 0 };
-
-function renderMoleUpdate(patch) {
-  moleUpdate = { ...moleUpdate, ...patch };
-  const { status, next, checkedAt } = moleUpdate;
-  const text = {
-    idle: checkedAt ? `Up to date. ${checked(checkedAt)}` : 'Checks once a day with Homebrew.',
-    checking: 'Checking for a newer Mole…',
-    available: `Mole ${next} is out.`,
-    updating: `Updating to ${next || 'the newest Mole'}…`,
-    latest: `Up to date. ${checked(checkedAt)}`,
-    updated: `Updated to ${next}. ${checked(checkedAt)}`,
-    error: "Couldn't check right now. Grub will try again tomorrow.",
-    nobrew: 'Checking needs Homebrew.',
-  }[status];
-  $('#about-mole-status').textContent = text;
-  const btn = $('#about-update');
-  if (status === 'available') setUpdateButton(btn, `Update to ${next}`, { icon: 'download', primary: true });
-  else if (status === 'updating') setUpdateButton(btn, 'Updating…', { icon: 'download', enabled: false });
-  else setUpdateButton(btn, status === 'checking' ? 'Checking…' : 'Check now', { enabled: status !== 'checking' && status !== 'nobrew' });
-  // an <svg> has no .hidden property, so set the attribute itself
-  $('#mole-update-glyph').toggleAttribute('hidden', status !== 'available');
-}
-
-async function checkMole() {
-  renderMoleUpdate({ status: 'checking' });
-  const r = await window.mole.moleOutdated();
-  if (!r.ok) return renderMoleUpdate({ status: r.reason === 'nobrew' ? 'nobrew' : 'error' });
-  renderMoleUpdate(r.next ? { status: 'available', next: r.next } : { status: 'latest', next: null, checkedAt: r.checkedAt });
-}
-
-$('#about-update').addEventListener('click', async () => {
-  if (moleUpdate.status !== 'available') return checkMole();
-  renderMoleUpdate({ status: 'updating' });
-  if (!(await window.mole.updateMole())) renderMoleUpdate({ status: 'nobrew' });
-});
-
 /* Grub's own updates: the updater in main checks every few hours; About shows where it's at. */
 
 
-// Both rows in About share one button shape: a label, an optional icon, and lime when there's something to do.
+// Grub's update button: a label, an optional icon, and lime when there's something to do.
 function setUpdateButton(btn, label, { icon = null, enabled = true, primary = false } = {}) {
   btn.querySelector('[id$="-label"]').textContent = label;
   if (icon) btn.dataset.icon = icon;
@@ -1178,19 +1134,9 @@ $('#update-card').addEventListener('click', installGrubUpdate);
 window.mole.grubUpdate.onChange(renderGrubUpdate);
 window.mole.grubUpdate.state().then(renderGrubUpdate);
 
-// fires after Update to…, and after the daily automatic update
-window.mole.onMoleUpdated((r) => {
-  const before = $('#about-mole').textContent;
-  const now = (r.version?.match(/\d+\.\d+\.\d+/) || [''])[0];
-  if (!r.ok) renderMoleUpdate({ status: 'error' });
-  else if (now && before !== 'Mole' && before !== `Mole ${now}`) renderMoleUpdate({ status: 'updated', next: now, checkedAt: Date.now() });
-  else renderMoleUpdate({ status: 'latest', checkedAt: Date.now() });
-  refreshVersion();
-});
-
 /* ---------- onboarding ---------- */
 
-const STEPS = ['welcome', 'engine', 'disk', 'automation', 'prefs'];
+const STEPS = ['welcome', 'disk', 'automation', 'prefs'];
 let step = 0;
 let diskPoll;
 
@@ -1206,39 +1152,12 @@ function goStep(i) {
   $('#onboard-dots').replaceChildren(...STEPS.map((_, j) => el('li', { class: j <= i ? 'is-done' : '' })));
   clearInterval(diskPoll);
   const name = STEPS[i];
-  if (name === 'engine') checkEngine();
   if (name === 'disk') {
     checkDisk();
     diskPoll = setInterval(checkDisk, 2000);
   }
   if (name === 'prefs') saveSetting({});
 }
-
-async function checkEngine() {
-  const p = await window.mole.perms.check();
-  $('#engine-install').hidden = true;
-  $('#engine-next').hidden = true;
-  if (p.mole) {
-    setCheck('#engine-check', 'ok', 'Engine ready. Teeth sharpened.');
-    $('#engine-next').hidden = false;
-  } else if (p.brew) {
-    setCheck('#engine-check', 'bad', 'Not installed yet.');
-    $('#engine-install').hidden = false;
-  } else {
-    setCheck('#engine-check', 'bad', 'Grub needs Homebrew to fetch its engine. Install it from brew.sh, then reopen Grub.');
-  }
-}
-
-$('#engine-install').addEventListener('click', async () => {
-  $('#engine-install').hidden = true;
-  setCheck('#engine-check', 'busy', 'Fetching the engine… this can take a minute.');
-  const code = await runQuiet({ tool: 'brew', action: 'install', names: ['mole'] });
-  if (code === 0) {
-    window.mole.watchStatus();
-    refreshVersion();
-  }
-  checkEngine();
-});
 
 async function checkDisk() {
   const p = await window.mole.perms.check();
@@ -1290,15 +1209,10 @@ function startOnboarding() {
 (async () => {
   settings = await window.mole.settings.get();
   await saveSetting({});
-  renderMoleUpdate({ checkedAt: settings.lastMoleUpdate || 0 });
-  // let the sidebar show when a newer Mole is out, without opening About
-  if (await window.mole.available()) setTimeout(checkMole, 20000);
   digState.home = await window.mole.home();
   window.mole.onStatus(renderStatus);
   renderChore('clean');
-  if (!settings.onboarded || !(await window.mole.available())) startOnboarding();
-  if (await window.mole.available()) {
-    refreshVersion();
-    window.mole.watchStatus();
-  }
+  if (!settings.onboarded) startOnboarding();
+  refreshVersion();
+  if (await window.mole.available()) window.mole.watchStatus();
 })();

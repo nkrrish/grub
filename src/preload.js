@@ -53,8 +53,6 @@ contextBridge.exposeInMainWorld('mole', {
     open: (pane) => ipcRenderer.invoke('perm:open', pane),
   },
   openLink: (url) => ipcRenderer.invoke('link:open', url),
-  updateMole: () => ipcRenderer.invoke('mole:update'),
-  moleOutdated: () => ipcRenderer.invoke('mole:outdated'),
   sweep: {
     get: () => ipcRenderer.invoke('sweep:get'),
     scan: () => ipcRenderer.invoke('sweep:scan'),
@@ -62,7 +60,6 @@ contextBridge.exposeInMainWorld('mole', {
     cancel: () => ipcRenderer.invoke('sweep:cancel'),
     onChange: on('sweep'),
   },
-  onMoleUpdated: on('mole:updated'),
   grubUpdate: {
     state: () => ipcRenderer.invoke('grub:update:state'),
     check: () => ipcRenderer.invoke('grub:update:check'),

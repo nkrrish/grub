@@ -4,15 +4,25 @@ Thanks for helping. Grub is small, so the process is light.
 
 ## Run it locally
 
-You need macOS 12 or later, Node.js 20+ and [Homebrew](https://brew.sh).
+You need macOS 12 or later and Node.js 20+. [Homebrew](https://brew.sh) is only needed to try the Updates page.
 
 ```bash
-brew install mole
 npm install
 npm start
 ```
 
-The app is plain Electron: `src/main.js` is the main process and `src/` holds the UI. There's no bundler or build step for development.
+The app is plain Electron: `src/main.js` is the main process and `src/` holds the UI. There's no bundler or build step for development. `npm start` fetches the Mole pinned in `mole.lock.json` into `vendor/` the first time (and checks it every time).
+
+## Moving to a newer Mole
+
+Grub reads Mole's JSON and its screens, so a new Mole only ships once Grub agrees with it:
+
+```bash
+node scripts/fetch-mole.js --bump 1.60.0   # pins it in mole.lock.json
+npm run mole:check                          # every command and field Grub relies on
+```
+
+Read Mole's changes between the two tags (the bump prints the link), fix anything the check or a manual run turns up, and commit `mole.lock.json` with those fixes. If Mole moved code that `scripts/fetch-mole.js` changes, the fetch stops and says which change to update.
 
 ## Reporting bugs
 

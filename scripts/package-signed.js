@@ -1,10 +1,12 @@
 // Builds Grub.app twice, once for Apple Silicon (arm64) and once for Intel (x64), each signed with Developer ID
 // and the hardened runtime, ready for notarization. Separate builds are about half the size of a universal one.
+// Each carries the Mole pinned in mole.lock.json, built for its arch, as Contents/Resources/mole; its Go helpers
+// are signed along with everything else.
 // Output: out/Grub-darwin-arm64/Grub.app and out/Grub-darwin-x64/Grub.app. Pass an arch to build just one.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const { packager } = require('@electron/packager');
 
 const root = path.join(__dirname, '..');
@@ -13,6 +15,9 @@ const { generateAssetCatalogForIcon } = require(path.join(root, 'node_modules/@e
 const identity = process.env.GRUB_SIGN_IDENTITY || 'Developer ID Application: Attechy Ltd (NY6MJC8WU5)';
 const entitlements = path.join(root, 'build/entitlements.mac.plist');
 const ARCHES = process.argv[2] ? [process.argv[2]] : ['arm64', 'x64'];
+
+// Checks every Mole file against mole.lock.json, and fetches whatever isn't cached yet.
+execFileSync(process.execPath, [path.join(__dirname, 'fetch-mole.js'), ...ARCHES], { stdio: 'inherit' });
 
 let hasActool = true;
 try { execSync('actool --version', { stdio: 'ignore' }); } catch { hasActool = false; }
@@ -38,13 +43,16 @@ try { execSync('actool --version', { stdio: 'ignore' }); } catch { hasActool = f
       platform: 'darwin',
       arch,
       icon: path.join(root, 'build/icon.icns'),
-      extraResource,
+      extraResource: [...extraResource, path.join(root, 'vendor/mole', arch, 'mole')],
       out: path.join(root, 'out'),
       overwrite: true,
       appBundleId: 'com.attechy.grub',
       asar: { unpackDir: 'node_modules/node-pty' },
       ignore: [
         /^\/out/,
+        // Mole goes in Resources (extraResource above), not in app.asar
+        /^\/vendor/,
+        /^\/mole\.lock\.json$/,
         /^\/docs/,
         /^\/scripts/,
         /^\/wrangler\.jsonc$/,

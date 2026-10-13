@@ -1,0 +1,35 @@
+{
+  "version": "1.59.1",
+  "tag": "V1.59.1",
+  "source": {
+    "file": "Mole-1.59.1.tar.gz",
+    "url": "https://github.com/tw93/Mole/archive/refs/tags/V1.59.1.tar.gz",
+    "sha256": "6c114193a1f3b61c4cee3910b10b6a91beafbcff6aa300f4e7decc42c272bf27"
+  },
+  "binaries": {
+    "arm64": {
+      "analyze": {
+        "file": "analyze-darwin-arm64",
+        "url": "https://github.com/tw93/Mole/releases/download/V1.59.1/analyze-darwin-arm64",
+        "sha256": "c16ac20b06813540698fcb8c006ccf813f9043034a2a7a78bf43a1cf62b39519"
+      },
+      "status": {
+        "file": "status-darwin-arm64",
+        "url": "https://github.com/tw93/Mole/releases/download/V1.59.1/status-darwin-arm64",
+        "sha256": "04c412f3dec65781b9e69e8a20bcdaa2d217f27cf0eda52843aea910ade39ef6"
+      }
+    },
+    "x64": {
+      "analyze": {
+        "file": "analyze-darwin-amd64",
+        "url": "https://github.com/tw93/Mole/releases/download/V1.59.1/analyze-darwin-amd64",
+        "sha256": "eb8aaa33b4686f2c41d83ec0dccf8d4e71bc9052e2c69959f94fbc483b5c8b38"
+      },
+      "status": {
+        "file": "status-darwin-amd64",
+        "url": "https://github.com/tw93/Mole/releases/download/V1.59.1/status-darwin-amd64",
+        "sha256": "15c4ae9b74bf915516951da97488c3a74e5d41f7c7da0cbba25dd38ed7523276"
+      }
+    }
+  }
+}

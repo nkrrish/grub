@@ -1,12 +1,15 @@
 {
   "name": "grub",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A free, open-source Mac cleaner with a live health dashboard, disk map, menu bar stats, startup control and updates.",
   "main": "src/main.js",
   "license": "GPL-3.0-or-later",
   "private": true,
   "scripts": {
+    "prestart": "node scripts/fetch-mole.js",
     "start": "electron .",
+    "mole": "node scripts/fetch-mole.js",
+    "mole:check": "node scripts/check-mole.js",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper || true",
     "icon": "sh scripts/icon.sh",
     "dist:notarized": "npm run package && sh scripts/make-dmg.sh && sh scripts/notarize-dmg.sh",

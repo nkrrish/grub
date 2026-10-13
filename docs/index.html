@@ -918,8 +918,7 @@
           </ol>
           <details class="source">
             <summary>Build it from source</summary>
-<pre><span class="c"># needs Homebrew and Node</span>
-brew install mole
+<pre><span class="c"># needs Node</span>
 git clone https://github.com/nkrrish/grub
 cd grub && npm install && npm start</pre>
           </details>
@@ -927,10 +926,9 @@ cd grub && npm install && npm start</pre>
         <div class="card reveal" style="--i:1">
           <h3>What setup asks for</h3>
           <ul class="asks">
-            <li><svg class="i" aria-hidden="true"><use href="#i-download-simple"/></svg><span><b>Mole</b>, the cleaning engine. Grub installs it with Homebrew if it's missing.</span></li>
             <li><svg class="i" aria-hidden="true"><use href="#i-hard-drives"/></svg><span><b>Full Disk Access</b>, so Grub can see the caches and leftovers it cleans.</span></li>
             <li><svg class="i" aria-hidden="true"><use href="#a-startup"/></svg><span><b>System Events</b> access, to list your login items.</span></li>
-            <li><svg class="i" aria-hidden="true"><use href="#a-schedule"/></svg><span><b>Open at login</b> and <b>daily Mole updates</b>. <em>Both optional.</em></span></li>
+            <li><svg class="i" aria-hidden="true"><use href="#a-schedule"/></svg><span><b>Open at login</b>. <em>Optional.</em> Mole, the cleaning engine, already comes inside Grub.</span></li>
           </ul>
         </div>
       </div>

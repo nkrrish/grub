@@ -108,7 +108,6 @@
         <button class="sidebar-foot" id="about-open" aria-label="About Grub and its engine">
           <span class="dot" id="mole-dot"></span>
           <span class="foot-version" id="mole-version">Looking for Mole…</span>
-          <svg class="foot-glyph" id="mole-update-glyph" viewBox="0 0 24 24" hidden><title>A newer Mole is out</title><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
         </button>
       </aside>
 
@@ -436,17 +435,6 @@
           <div class="step-actions"><button class="btn btn-primary" data-next>Let's dig</button></div>
         </section>
 
-        <section class="step" data-step="engine">
-          <div class="step-icon"><svg viewBox="0 0 24 24"><path d="M7 4v6a5 5 0 0 0 10 0V4" /><path d="M12 15v5" /></svg></div>
-          <h1>First, my teeth.</h1>
-          <p>Grub does its chewing with a small, free cleaning engine. Let's make sure it's on your Mac.</p>
-          <div class="check" id="engine-check"><span class="check-dot"></span><span class="check-text">Checking…</span></div>
-          <div class="step-actions">
-            <button class="btn btn-primary" id="engine-install" hidden>Install it</button>
-            <button class="btn btn-primary" data-next id="engine-next" hidden>Continue</button>
-          </div>
-        </section>
-
         <section class="step" data-step="disk">
           <div class="step-icon"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg></div>
           <h1>Let me into every room.</h1>
@@ -482,10 +470,6 @@
             <div><b>Open Grub at login</b><span>Keeps Grub in the menu bar with live stats.</span></div>
             <button class="switch" role="switch" id="pref-login" aria-checked="false" aria-label="Open Grub at login"></button>
           </div>
-          <div class="pref">
-            <div><b>Keep the engine updated</b><span>Checks once a day and updates quietly.</span></div>
-            <button class="switch" role="switch" id="pref-update" aria-checked="true" aria-label="Keep the engine updated"></button>
-          </div>
           <p class="fineprint">Some optimizations need your Mac password. Grub asks for it in its own window, only when needed, and never stores it.</p>
           <div class="step-actions"><button class="btn btn-primary" id="onboard-done">Start eating</button></div>
         </section>
@@ -496,19 +480,14 @@
     <div class="modal about" id="about" role="dialog" aria-modal="true" aria-labelledby="about-title">
       <div class="about-face face-hover" id="about-face-slot" aria-hidden="true"></div>
       <h2 id="about-title">Grub</h2>
-      <p>A free, open-source Mac cleaner. Its core cleaning uses <a href="#" data-link="https://github.com/tw93/Mole">Mole</a> by tw93 (not affiliated).</p>
+      <p>A free, open-source Mac cleaner. Its core cleaning uses <a href="#" data-link="https://github.com/tw93/Mole">Mole</a> by tw93, which comes inside Grub (not affiliated).</p>
       <p class="about-by">Made by <a href="#" data-link="https://naguleskrrish.com/">Nagules Krrish</a> at <a href="#" data-link="https://attechy.com/">Attechy</a>.</p>
       <div class="about-version">
         <div><b id="about-grub">Grub</b><span id="about-grub-status" aria-live="polite">Checks for updates on its own.</span></div>
         <button class="btn btn-quiet" id="about-grub-update"><span class="btn-label"><svg class="btn-glyph" data-glyph="restart" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" /></svg><svg class="btn-glyph" data-glyph="download" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg><span id="about-grub-label">Check now</span></span></button>
       </div>
       <div class="about-version">
-        <div><b id="about-mole">Mole</b><span id="about-mole-status">Checks once a day with Homebrew.</span></div>
-        <button class="btn btn-quiet" id="about-update"><span class="btn-label"><svg class="btn-glyph" data-glyph="download" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg><span id="about-mole-label">Check now</span></span></button>
-      </div>
-      <div class="pref">
-        <div><b>Update Mole automatically</b><span>Once a day, quietly. Grub updates itself either way.</span></div>
-        <button class="switch" role="switch" id="about-auto" aria-checked="true" aria-label="Update Mole automatically"></button>
+        <div><b id="about-mole">Mole</b><span id="about-mole-status">Comes with Grub and updates with it.</span></div>
       </div>
       <div class="pref">
         <div><b>Keep an eye out</b><span>A heads-up when space or memory runs low, and a quiet daily look for space to clear.</span></div>

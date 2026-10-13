@@ -15,5 +15,5 @@ Only the latest release gets fixes. Grub updates itself, so most people are on i
 ## What Grub does with sensitive data
 
 - Your admin password is passed straight to `sudo` and is never stored or logged.
-- Grub has no account, no analytics and no tracking. Its only network calls are update checks (GitHub Releases through update.electronjs.org) and Homebrew.
+- Grub has no account, no analytics and no tracking. Its only network calls are update checks (GitHub Releases through update.electronjs.org) and Homebrew, for the Updates page. The Mole inside Grub is changed so it never checks for updates itself.
 - Releases are signed with a Developer ID and notarized by Apple.

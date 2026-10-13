@@ -15,5 +15,13 @@ another product. If you distribute a modified version, give it a different
 name and its own artwork, and do not suggest it is made or endorsed by the
 Grub authors.
 
-Grub runs Mole (https://github.com/tw93/Mole), a separate program by tw93,
-licensed under GPL-3.0. Grub is not affiliated with Mole.
+Mole
+----
+Grub ships Mole (https://github.com/tw93/Mole), a separate program by tw93,
+licensed under GPL-3.0-or-later, inside Grub.app at Contents/Resources/mole.
+The version is pinned in mole.lock.json. Grub changes two of its files so the
+bundled copy never updates or removes itself; the changes are listed in
+scripts/fetch-mole.js and in CHANGES-BY-GRUB.txt next to the bundled copy.
+The source of the exact Mole in each release is attached to that release on
+GitHub. "Mole" and its logo are Mole's trademarks. Grub is not affiliated
+with or endorsed by Mole.
