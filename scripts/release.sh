@@ -28,4 +28,6 @@ cp "vendor/cache/$(node -p "require('./mole.lock.json').source.file")" "$MOLE_SR
 [ "$(shasum -a 256 "$MOLE_SRC" | cut -d' ' -f1)" = "$(node -p "require('./mole.lock.json').source.sha256")" ] || { echo "$MOLE_SRC doesn't match mole.lock.json."; exit 1; }
 FILES="$FILES $MOLE_SRC"
 # shellcheck disable=SC2086
-gh release create "v$VERSION" $FILES --title "Grub $VERSION" --generate-notes "$@"
+# GitHub's generated notes only when none are given; with --notes it adds its changelog line a second time
+if [ $# -eq 0 ]; then set -- --generate-notes; fi
+gh release create "v$VERSION" $FILES --title "Grub $VERSION" "$@"
