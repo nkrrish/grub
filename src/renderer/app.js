@@ -332,7 +332,29 @@ let currentChore = 'clean';
 
 let current = { view: 'burrow', chore: null };
 
+/* Lists and tiles slide in the first time a page draws them. Every redraw after that (a tick, a search, a
+   switch, a window resize) shows the new state straight away: replaying the entrance made pages blink and jump.
+   Opening the page again, or Disk opening another folder, plays it once more. */
+const settleTimers = new Map();
+
+function unsettle(id) {
+  clearTimeout(settleTimers.get(id));
+  settleTimers.delete(id);
+  document.getElementById(id)?.classList.remove('is-settled');
+}
+
+new MutationObserver((changes) => {
+  for (const c of changes) {
+    const view = c.target.closest?.('.view');
+    if (!view || view.classList.contains('is-settled') || settleTimers.has(view.id)) continue;
+    const drewRows = [...c.addedNodes].some((n) => n.nodeType === 1 && (n.matches('.row, .tile') || n.querySelector('.row, .tile')));
+    // long enough for the staggered entrance to finish before redraws stop replaying it
+    if (drewRows) settleTimers.set(view.id, setTimeout(() => (view.classList.add('is-settled'), settleTimers.delete(view.id)), 900));
+  }
+}).observe($('.main'), { childList: true, subtree: true });
+
 function show(view, chore) {
+  unsettle(`view-${view}`);
   // leaving a finished run's summary dismisses it; a running one keeps going in the background
   if (!$('#runner').hidden && run?.exited && !isRunHome(view, chore)) dismissRun();
   current = { view, chore: view === 'chores' ? chore : null };
@@ -560,6 +582,7 @@ const EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
 async function dig(target, fromTile, fresh) {
   digState.loaded = true;
   digState.path = target;
+  unsettle('view-dig');
   renderCrumbs();
   const list = $('#dig-list');
   // a new dig (say, back via the breadcrumb) abandons any zoom still waiting on its folder

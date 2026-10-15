@@ -3216,15 +3216,223 @@ body.ask-open .scrim {
   white-space: nowrap;
 }
 
-.sweep-chips {
+/* one stacked bar: each kind's share, in its own colour */
+.sweep-stack {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 2px;
+  height: 10px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--surface-3);
 }
 
-.sweep-result {
-  margin-bottom: 12px;
+.sweep-stack i {
+  flex: none;
+  width: max(var(--w), 4px);
+  background: var(--tone);
+}
+
+.sweep-stack i.is-rest {
+  flex: 1;
+  width: auto;
+  background: transparent;
+}
+
+.sweep-stack.is-empty {
+  opacity: 0.6;
+}
+
+.sweep-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sweep-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sweep-legend i,
+.sweep-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--tone);
+}
+
+.sweep-legend b {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the review: a live total up top, then a card per kind */
+.sweep-summary {
+  display: grid;
+  gap: 10px;
+  margin: -8px 0 28px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.sweep-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.sweep-summary-amount {
+  color: var(--rot);
+  font: 600 40px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.sweep-summary-verb {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.sweep-summary-note {
+  margin: 2px 0 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.sweep-group-tick {
+  display: grid;
+  grid-template-columns: 20px 8px minmax(0, 1fr) auto;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 18px;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.sweep-group-tick:disabled {
+  opacity: 0.55;
+}
+
+.sweep-group-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sweep-group-text b {
+  font-weight: 600;
+}
+
+.sweep-group-text small {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sweep-group-size {
+  color: var(--text);
+  font: 600 17px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sweep-group-tick:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
+}
+
+.sweep-more {
+  width: 100%;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sweep-more:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+
+/* while Grub looks: what's done, what's going, what's next */
+.sweep-working {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding-top: 24px;
+}
+
+.sweep-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sweep-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--faint);
+  font-size: 14px;
+  transition: color 200ms ease;
+}
+
+.sweep-steps .is-now {
+  color: var(--text);
+}
+
+.sweep-steps .is-done {
+  color: var(--muted);
+}
+
+.sweep-step-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line-strong);
+  border-radius: 99px;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.sweep-steps .is-now .sweep-step-dot {
+  border-color: var(--rot);
+  animation: pulse 900ms ease-in-out infinite alternate;
+}
+
+.sweep-steps .is-done .sweep-step-dot {
+  border-color: var(--rot);
+  background: var(--rot);
+}
+
+.sweep-step-now {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sweep-steps .is-now .sweep-step-dot {
+    animation: none;
+  }
 }
 
 /* ---------- schedule ---------- */
@@ -4283,4 +4491,22 @@ body.win-open .win-mark {
   body.win-open .win-mark {
     animation: none;
   }
+}
+
+/* rows slide in on a page's first draw only; ticking redraws the page and shouldn't replay it */
+.view.is-settled .row,
+.view.is-settled .tile {
+  animation: none;
+}
+
+/* no lone word on a paragraph's last line; headings split into even lines */
+p,
+.lede,
+.note {
+  text-wrap: pretty;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
 }

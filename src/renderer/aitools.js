@@ -22,7 +22,7 @@ const dayFmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'shor
 
 async function aiLoad({ quiet } = {}) {
   ai.loaded = true;
-  if (!quiet) ai.rendered = false;
+  if (!quiet) unsettle('view-ai');
   if (!quiet && !ai.data) $('#ai-body').replaceChildren(digging('Sniffing through your AI tools…'));
   if (!quiet) setFreshness('ai-fresh', ai.at, true);
   const res = await window.mole.ai.scan();
@@ -50,8 +50,6 @@ function aiNav() {
 const aiIcons = new Map();
 
 function aiRender() {
-  $('#view-ai').classList.toggle('is-settled', !!ai.rendered);
-  ai.rendered = true;
   setFreshness('ai-fresh', ai.at);
   const { tools, retention } = ai.data;
   const items = ai.data.items;
