@@ -1538,6 +1538,8 @@ html.by-pointer :focus-visible {
 
 .switch {
   position: relative;
+  /* a row with long text would squeeze it, leaving the knob hanging off the end */
+  flex: none;
   width: 40px;
   height: 24px;
   border-radius: 99px;
@@ -1953,6 +1955,22 @@ button.sidebar-foot {
 .about p a,
 .about-version span a {
   color: var(--rot);
+}
+
+/* links that shouldn't shout: the sentence's own colour, just underlined */
+.about p a.quiet-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 150ms ease, color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .about p a.quiet-link:hover {
+    color: var(--text);
+    text-decoration-color: currentColor;
+  }
 }
 
 /* Settings rows are edge-aligned, so the actions sit on the same edges: secondary left, Done right. */
