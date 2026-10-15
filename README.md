@@ -68,7 +68,7 @@ Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](C
 
 ## More from Attechy
 
-Grub is made by [Nagules Krrish](https://naguleskrrish.com/) at [Attechy](https://attechy.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy). We also make:
+Grub is made by [Nagules Krrish](https://www.linkedin.com/in/naguleskrrish/) at [Attechy](https://attechy.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy). We also make:
 
 - <img src="docs/apps/cuedm.webp" width="20" height="20" alt="" align="top"> [CueDM](https://cuedm.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy): sends your link by DM when someone comments a keyword on your Instagram post.
 - <img src="docs/apps/whisprnote.webp" width="20" height="20" alt="" align="top"> [WhisprNote](https://whisprnote.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy): AI meeting notes for your Mac.
