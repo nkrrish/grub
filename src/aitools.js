@@ -36,7 +36,16 @@ const APP_UPDATES = [
 ];
 
 // Nothing outside these folders can be sent to the Trash, whatever the scan says.
+// Editors built on VS Code list extensions they've replaced in extensions/.obsolete and delete them on a
+// later start, which often never comes. These are the editors' own records, so only those folders go.
+const EDITORS = [
+  { tool: 'gemini', app: 'Antigravity', runs: 'antigravity', dir: path.join(HOME, '.antigravity/extensions') },
+  { tool: 'gemini', app: 'Antigravity IDE', runs: 'antigravity-ide', dir: path.join(HOME, '.antigravity-ide/extensions') },
+  { tool: 'cursor', app: 'Cursor', runs: 'cursor', dir: path.join(HOME, '.cursor/extensions') },
+];
+
 const TRASH_ROOTS = [
+  ...EDITORS.map((e) => e.dir),
   P.claude,
   P.claudeVersions,
   P.codex,
@@ -45,7 +54,7 @@ const TRASH_ROOTS = [
   ...APP_UPDATES.flatMap(({ bundle }) => [path.join(CACHES, bundle, 'org.sparkle-project.Sparkle'), path.join(CACHES, `${bundle}.ShipIt`)]),
 ];
 
-const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode', chatgpt: 'ChatGPT' };
+const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor', opencode: 'OpenCode', chatgpt: 'ChatGPT', gemini: 'Antigravity' };
 const DEFAULT_RETENTION = { claude: 30, codex: 90 }; // days; 0 means never clean
 
 function run(cmd, args, { timeout = 60000, cwd = HOME } = {}) {
@@ -119,6 +128,10 @@ function runningTools(procs) {
     codex: has(/(^|\/)codex$|\/Codex\.app\//),
     cursor: has(/\/Cursor\.app\/|(^|\/)cursor-agent$/),
     opencode: has(/(^|\/)opencode$|\/OpenCode\.app\//),
+    claude: has(/\/Claude\.app\/|(^|\/)claude$/),
+    chatgpt: has(/\/ChatGPT\.app\//),
+    antigravity: has(/\/Antigravity\.app\//),
+    'antigravity-ide': has(/\/Antigravity IDE\.app\//),
   };
 }
 
@@ -171,9 +184,26 @@ function cacheItem(tool, name, sub, paths, blocked) {
   return { id: idFor('cache', tool, name), tool, group: 'cache', kind: 'trash', name, sub, paths, on: !blocked, blocked };
 }
 
+function obsoleteExtensions(dir) {
+  let marked = {};
+  try {
+    marked = JSON.parse(fs.readFileSync(path.join(dir, '.obsolete'), 'utf8')) || {};
+  } catch {
+    return [];
+  }
+  // a name the editor wrote; anything that isn't a plain folder name in this folder is ignored
+  return Object.keys(marked)
+    .filter((n) => marked[n] && /^[\w.-]+$/.test(n))
+    .map((n) => path.join(dir, n))
+    .filter((p) => stat(p)?.isDirectory());
+}
+
 function caches(running) {
   const codexBusy = running.codex && 'Quit Codex first';
   return [
+    ...EDITORS.map((e) =>
+      cacheItem(e.tool, `${e.app} old extension versions`, `Versions ${e.app} already replaced and marked to delete`, obsoleteExtensions(e.dir), running[e.runs] && `Quit ${e.app} first`)
+    ),
     cacheItem('claude', 'Claude Code unsent reports', 'Usage reports that never went out', staleFiles(path.join(P.claude, 'telemetry'))),
     cacheItem('claude', 'Claude Code shell snapshots', 'Rebuilt each time a session starts', staleFiles(path.join(P.claude, 'shell-snapshots'))),
     cacheItem('claude', 'Claude Code debug logs', 'Only useful for bug reports', staleFiles(path.join(P.claude, 'debug'))),
@@ -207,13 +237,335 @@ function appUpdates(procs) {
   return items;
 }
 
-/* ---------- Codex after it's uninstalled ---------- */
+// The app whose icon stands for each tool on its chip. The CLIs have none of their own, so the maker's app stands in.
+const TOOL_APPS = { claude: ['Claude'], codex: ['ChatGPT', 'Codex'], cursor: ['Cursor'], opencode: ['OpenCode'], gemini: ['Antigravity', 'Antigravity IDE'] };
+function toolApp(key) {
+  for (const name of TOOL_APPS[key] || [])
+    for (const dir of ['/Applications', path.join(HOME, 'Applications')]) {
+      const p = path.join(dir, name + '.app');
+      if (exists(p)) return p;
+    }
+  return null;
+}
 
-// Everything Codex keeps in ~/.codex (sessions, its list of them, settings and sign-in) only shows up once
-// Codex itself is gone, as one item, so nothing is left half-removed. Never ticked: it's a choice to make.
-function codexLeftovers() {
-  if (!exists(P.codex)) return [];
-  return [{ id: idFor('leftovers', 'codex'), tool: 'codex', group: 'cache', kind: 'codex-leftovers', name: 'Everything Codex left behind', sub: 'Codex isn’t installed. Its sessions, settings and sign-in, all to the Trash', paths: [P.codex], on: false }];
+/* ---------- tools you've removed ---------- */
+
+// Deleting an app or a command leaves its data in your home folder. Each tool's data only shows up once the
+// tool is really gone (checked again just before anything moves), as one item so nothing is left half-removed.
+// Never ticked: it's a choice to make.
+const resolves = (p) => fs.existsSync(p); // follows links, so a dangling one counts as gone
+
+function opencodeBin() {
+  const nvm = path.join(HOME, '.nvm/versions/node');
+  return [
+    path.join(HOME, '.opencode/bin/opencode'),
+    path.join(HOME, '.local/bin/opencode'),
+    '/opt/homebrew/bin/opencode',
+    '/usr/local/bin/opencode',
+    path.join(HOME, '.bun/bin/opencode'),
+    path.join(HOME, '.npm-global/bin/opencode'),
+    path.join(HOME, 'Library/pnpm/opencode'),
+    ...ls(nvm).map((v) => path.join(nvm, v, 'bin/opencode')),
+  ].find(resolves);
+}
+
+const cursorAgentBin = () => P.cursorBins.find(resolves);
+// `agent` is a common name, so a link only counts as Cursor's if it points into Cursor's own folder
+function isCursorLink(p) {
+  try {
+    return path.resolve(path.dirname(p), fs.readlinkSync(p)).startsWith(P.cursorVersions + '/');
+  } catch {
+    return false;
+  }
+}
+const APP_SUPPORT = path.join(HOME, 'Library/Application Support');
+const lib = (...p) => path.join(HOME, 'Library', ...p);
+// files in a folder whose names match, for the ones that carry a machine id or a date (ByHost plists, backups)
+const matching = (dir, re) => ls(dir).filter((f) => re.test(f)).map((f) => path.join(dir, f));
+
+function claudeBin() {
+  const nvm = path.join(HOME, '.nvm/versions/node');
+  return [
+    path.join(HOME, '.local/bin/claude'),
+    path.join(HOME, '.claude/local/claude'),
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+    path.join(HOME, '.npm-global/bin/claude'),
+    path.join(HOME, '.bun/bin/claude'),
+    path.join(HOME, '.volta/bin/claude'),
+    path.join(HOME, 'Library/pnpm/claude'),
+    ...ls(nvm).map((v) => path.join(nvm, v, 'bin/claude')),
+  ].find(resolves);
+}
+
+const appIs = (...names) => names.some((n) => ['/Applications', path.join(HOME, 'Applications')].some((d) => exists(path.join(d, n + '.app'))));
+
+// What each AI app and tool leaves behind, checked against real installs (October 2026). Mole's uninstall
+// already takes an app's ~/Library files that match its bundle id; these are the ones it misses, plus the
+// dot folders in your home that these tools keep their real data in.
+//   apps     Grub offers this right after it uninstalls one of these apps
+//   tool     the AI tools column it's cleared from when something else removed the app
+//   runs     what must not be running while it goes
+//   gone     true only when nothing that still uses this data is installed
+//   askOnly  never offered on its own after an uninstall: removes a command that's still installed
+const LEFTOVERS = [
+  {
+    key: 'claude-app',
+    apps: ['Claude'],
+    tool: 'claude',
+    runs: 'claude',
+    note: 'Claude app removed',
+    name: 'What the Claude app left behind',
+    sub: 'The Claude app’s chats cache, settings, logs and update files',
+    gone: () => !appIs('Claude'),
+    paths: () => [
+      lib('Application Support/Claude'),
+      lib('Application Support/Claude-3p'),
+      lib('Caches/com.anthropic.claudefordesktop'),
+      lib('Caches/com.anthropic.claudefordesktop.ShipIt'),
+      lib('HTTPStorages/com.anthropic.claudefordesktop'),
+      lib('Logs/Claude'),
+      lib('Preferences/com.anthropic.claudefordesktop.plist'),
+      lib('Saved Application State/com.anthropic.claudefordesktop.savedState'),
+      ...matching(lib('Preferences/ByHost'), /^com\.anthropic\.claudefordesktop\./),
+      ...matching(lib('Application Support/CrashReporter'), /^Claude_.*\.plist$/),
+    ],
+  },
+  {
+    // ~/.claude is shared by the Claude app's Code tab and the claude command; it goes only when both are gone
+    key: 'claude',
+    apps: ['Claude'],
+    tool: 'claude',
+    runs: 'claude',
+    note: 'Removed',
+    name: 'Everything Claude Code left behind',
+    sub: 'Neither the Claude app nor the claude command is installed. Sessions, settings, plugins and sign-in',
+    gone: () => !appIs('Claude') && !claudeBin(),
+    paths: () => [
+      P.claude,
+      P.claudeVersions,
+      path.join(HOME, '.cache/claude'),
+      lib('Caches/claude-cli-nodejs'),
+      ...matching(HOME, /^\.claude\.json(\..*)?$/),
+    ],
+  },
+  {
+    // ChatGPT is the app that hosts Codex now (bundle com.openai.codex); com.openai.chat is its older self, and
+    // the computer-use agent (com.openai.sky.CUAService) ships inside it. ChatGPT Atlas (com.openai.atlas) is
+    // a separate app and is never touched.
+    key: 'chatgpt-app',
+    apps: ['ChatGPT', 'Codex'],
+    tool: 'codex',
+    runs: 'chatgpt',
+    note: 'ChatGPT app removed',
+    name: 'What the ChatGPT app left behind',
+    sub: 'ChatGPT and Codex app data, settings, cookies, widgets and its computer-use agent',
+    gone: () => !appIs('ChatGPT', 'Codex'),
+    paths: () => [
+      lib('Application Support/Codex'),
+      lib('Application Support/com.openai.chat'),
+      lib('Application Support/com.openai.codex'),
+      lib('Application Support/OpenAI'),
+      lib('Caches/Codex'),
+      lib('Caches/com.openai.chat'),
+      lib('Caches/com.openai.codex'),
+      lib('HTTPStorages/com.openai.chat'),
+      lib('HTTPStorages/com.openai.chat.binarycookies'),
+      lib('HTTPStorages/com.openai.codex'),
+      lib('HTTPStorages/com.openai.codex.binarycookies'),
+      lib('HTTPStorages/ChatGPTHelper.binarycookies'),
+      lib('HTTPStorages/com.openai.sky.CUAService'),
+      lib('HTTPStorages/com.openai.sky.CUAService.binarycookies'),
+      lib('WebKit/com.openai.chat'),
+      lib('Containers/com.openai.chat.Widgets'),
+      lib('Group Containers/group.com.openai.chat'),
+      lib('Group Containers/2DC432GLL2.com.openai.codex.notifications'),
+      lib('Group Containers/2DC432GLL2.com.openai.sky.CUAService'),
+      lib('Application Scripts/com.openai.chat.Widgets'),
+      lib('Application Scripts/group.com.openai.chat'),
+      lib('Application Scripts/2DC432GLL2.com.openai.sky.CUAService'),
+      lib('Saved Application State/com.openai.chat.savedState'),
+      lib('Saved Application State/com.openai.codex.savedState'),
+      lib('Preferences/ChatGPTHelper.plist'),
+      lib('Preferences/com.openai.codex.plist'),
+      lib('Preferences/com.openai.sky.CUAService.plist'),
+      ...matching(lib('Preferences'), /^com\.openai\.chat(\..*)?\.plist$/),
+    ],
+  },
+  {
+    // ~/.codex is shared by the ChatGPT app and the codex command; it goes only when both are gone
+    key: 'codex',
+    apps: ['ChatGPT', 'Codex'],
+    tool: 'codex',
+    runs: 'codex',
+    note: 'Removed',
+    name: 'Everything Codex left behind',
+    sub: 'Neither the ChatGPT app nor the codex command is installed. Sessions, settings and sign-in',
+    gone: () => !codexBin(),
+    paths: () => [P.codex],
+  },
+  {
+    key: 'antigravity',
+    apps: ['Antigravity'],
+    tool: 'gemini',
+    runs: 'antigravity',
+    note: 'Antigravity removed',
+    name: 'What Antigravity left behind',
+    sub: 'Its extensions, settings, conversations and app data',
+    gone: () => !appIs('Antigravity'),
+    paths: () => [
+      path.join(HOME, '.antigravity'),
+      lib('Application Support/Antigravity'),
+      lib('Caches/com.google.antigravity'),
+      lib('Caches/com.google.antigravity.ShipIt'),
+      lib('HTTPStorages/com.google.antigravity'),
+      lib('Preferences/com.google.antigravity.plist'),
+      lib('Saved Application State/com.google.antigravity.savedState'),
+      ...matching(lib('Preferences/ByHost'), /^com\.google\.antigravity\.ShipIt\./),
+      // conversations both Antigravity apps share; only once the IDE is gone too
+      ...(appIs('Antigravity IDE') ? [] : [path.join(HOME, '.gemini/antigravity')]),
+    ],
+  },
+  {
+    key: 'antigravity-ide',
+    apps: ['Antigravity IDE'],
+    tool: 'gemini',
+    runs: 'antigravity-ide',
+    note: 'Antigravity IDE removed',
+    name: 'What Antigravity IDE left behind',
+    sub: 'Its extensions, settings and app data',
+    gone: () => !appIs('Antigravity IDE'),
+    paths: () => [
+      path.join(HOME, '.antigravity-ide'),
+      lib('Application Support/Antigravity IDE'),
+      lib('Caches/com.google.antigravity-ide'),
+      lib('Caches/com.google.antigravity-ide.ShipIt'),
+      lib('HTTPStorages/com.google.antigravity-ide'),
+      lib('Preferences/com.google.antigravity-ide.plist'),
+      lib('Saved Application State/com.google.antigravity-ide.savedState'),
+      ...matching(lib('Preferences/ByHost'), /^com\.google\.antigravity-ide\.ShipIt\./),
+      ...(appIs('Antigravity') ? [] : [path.join(HOME, '.gemini/antigravity')]),
+    ],
+  },
+  {
+    key: 'opencode',
+    apps: ['OpenCode'],
+    tool: 'opencode',
+    runs: 'opencode',
+    note: 'Removed',
+    name: 'Everything OpenCode left behind',
+    sub: 'Neither the OpenCode app nor the opencode command is installed. Chats, settings and sign-in',
+    gone: () => !opencodeBin() && !appIs('OpenCode'),
+    paths: () => [
+      P.opencode,
+      path.join(HOME, '.config/opencode'),
+      path.join(HOME, '.cache/opencode'),
+      path.join(HOME, '.local/state/opencode'),
+      path.join(HOME, '.opencode'),
+      lib('Application Support/ai.opencode.desktop'),
+      lib('Caches/ai.opencode.desktop'),
+      lib('WebKit/ai.opencode.desktop'),
+      lib('HTTPStorages/ai.opencode.desktop'),
+      lib('Preferences/ai.opencode.desktop.plist'),
+      lib('Saved Application State/ai.opencode.desktop.savedState'),
+    ],
+  },
+  {
+    // the OpenCode app is gone but the opencode command stays: only the app's own files
+    key: 'opencode-app',
+    apps: ['OpenCode'],
+    tool: 'opencode',
+    runs: 'opencode',
+    note: 'OpenCode app removed',
+    name: 'What the OpenCode app left behind',
+    sub: 'The app’s settings and web data. The opencode command is still installed, so its chats stay',
+    gone: () => !appIs('OpenCode') && !!opencodeBin(),
+    paths: () => [
+      lib('Application Support/ai.opencode.desktop'),
+      lib('Caches/ai.opencode.desktop'),
+      lib('WebKit/ai.opencode.desktop'),
+      lib('HTTPStorages/ai.opencode.desktop'),
+      lib('Preferences/ai.opencode.desktop.plist'),
+      lib('Saved Application State/ai.opencode.desktop.savedState'),
+    ],
+  },
+  {
+    key: 'cursor',
+    apps: ['Cursor'],
+    tool: 'cursor',
+    runs: 'cursor',
+    note: 'Removed',
+    name: 'Everything Cursor left behind',
+    sub: 'Neither the Cursor app nor cursor-agent is installed. Extensions, settings and sign-in',
+    gone: () => !appIs('Cursor') && !cursorAgentBin(),
+    paths: () => [path.join(HOME, '.cursor'), path.dirname(P.cursorVersions), ...P.cursorBins.filter(isCursorLink), ...cursorAppFiles()],
+  },
+  {
+    // the command-line agent still uses ~/.cursor, so only the editor's part goes
+    key: 'cursor-app',
+    apps: ['Cursor'],
+    tool: 'cursor',
+    runs: 'cursor',
+    note: 'Cursor app removed',
+    name: 'What the Cursor app left behind',
+    sub: 'Its extensions and app data. cursor-agent is still installed, so its settings stay',
+    gone: () => !appIs('Cursor') && !!cursorAgentBin(),
+    paths: () => [path.join(HOME, '.cursor/extensions'), ...cursorAppFiles()],
+  },
+  {
+    // the app is gone but its command-line agent stays; only removed when asked
+    key: 'cursor-cli',
+    apps: ['Cursor'],
+    tool: 'cursor',
+    runs: 'cursor',
+    askOnly: true,
+    keep: 'cursor-agent',
+    note: 'cursor-agent is still installed',
+    action: 'Remove it',
+    name: 'cursor-agent and its settings',
+    sub: 'The cursor-agent command, still installed, with its settings, sign-in and MCP setup in ~/.cursor',
+    gone: () => !appIs('Cursor') && !!cursorAgentBin(),
+    // everything of Cursor's that the app row doesn't take, so the two never overlap
+    paths: () => [
+      ...ls(path.join(HOME, '.cursor')).filter((n) => n !== 'extensions').map((n) => path.join(HOME, '.cursor', n)),
+      path.dirname(P.cursorVersions),
+      ...P.cursorBins.filter(isCursorLink),
+    ],
+  },
+];
+
+function cursorAppFiles() {
+  const id = 'com.todesktop.230313mzl4w4u92';
+  return [
+    lib('Application Support/Cursor'),
+    lib('Caches/' + id),
+    lib('Caches/' + id + '.ShipIt'),
+    lib('HTTPStorages/' + id),
+    lib('Preferences/' + id + '.plist'),
+    lib('Saved Application State/' + id + '.savedState'),
+    lib('Logs/Cursor'),
+    ...matching(lib('Preferences/ByHost'), new RegExp('^' + id.replace(/\./g, '\\.') + '\\.')),
+  ];
+}
+
+function leftovers(running) {
+  return LEFTOVERS.filter((l) => !running[l.runs] && l.gone())
+    .map((l) => ({ ...l, paths: l.paths().filter(exists) }))
+    .filter((l) => l.paths.length)
+    .map((l) => ({
+      id: idFor('leftovers', l.key),
+      tool: l.tool,
+      group: 'gone',
+      kind: 'leftovers',
+      leftover: l.key,
+      note: l.note,
+      action: l.action || 'Clear',
+      askOnly: !!l.askOnly,
+      name: l.name,
+      sub: l.sub,
+      paths: l.paths,
+      on: false,
+    }));
 }
 
 /* ---------- Claude Code sessions ---------- */
@@ -509,8 +861,11 @@ async function scan(settings = {}) {
     ...codex,
     ...(await worktrees(cwds, recentCwds)),
     ...(await opencodeCompaction(running)),
-    ...(hasCodex || running.codex ? [] : codexLeftovers()),
+    ...leftovers(running),
   ];
+  // a tool that's gone entirely is one item; its logs and old versions are already inside it
+  const goneAll = new Set(items.filter((i) => i.kind === 'leftovers' && i.leftover === i.tool).map((i) => i.tool));
+  for (let i = items.length - 1; i >= 0; i--) if (goneAll.has(items[i].tool) && items[i].kind !== 'leftovers') items.splice(i, 1);
 
   const measured = await sizes([...new Set(items.filter((i) => i.bytes == null).flatMap((i) => i.paths))]);
   for (const i of items) {
@@ -519,16 +874,26 @@ async function scan(settings = {}) {
   }
   const worth = items.filter((i) => i.bytes >= 4096 || i.group === 'session');
 
-  const footprint = await sizes([P.claude, P.codex, path.join(HOME, '.cursor'), path.join(HOME, '.gemini'), P.opencode, P.claudeVersions, P.cursorVersions].filter(exists));
-  const tools = Object.entries({
+  const goneTools = new Set(worth.filter((i) => i.group === 'gone').map((i) => i.tool));
+  // every place each tool keeps data, so a column matches what clearing a removed tool takes
+  const places = {
     claude: [P.claude, P.claudeVersions],
     codex: [P.codex],
-    cursor: [path.join(HOME, '.cursor'), P.cursorVersions],
-    opencode: [P.opencode],
-    gemini: [path.join(HOME, '.gemini')],
-  })
-    .map(([key, dirs]) => ({ key, bytes: dirs.reduce((n, d) => n + (footprint.get(d) || 0), 0) }))
-    .filter((t) => t.bytes > 0);
+    cursor: [path.join(HOME, '.cursor'), P.cursorVersions, path.join(APP_SUPPORT, 'Cursor')],
+    opencode: [P.opencode, path.join(HOME, '.config/opencode'), path.join(HOME, '.cache/opencode'), path.join(HOME, '.local/state/opencode'), path.join(APP_SUPPORT, 'ai.opencode.desktop')],
+    gemini: [path.join(HOME, '.gemini'), path.join(HOME, '.antigravity'), path.join(HOME, '.antigravity-ide')],
+  };
+  const footprint = await sizes(Object.values(places).flat().filter(exists));
+  const tools = Object.entries(places)
+    .map(([key, dirs]) => ({ key, bytes: dirs.reduce((n, d) => n + (footprint.get(d) || 0), 0), dirs: dirs.filter(exists).map((d) => d.replace(HOME, '~')), app: toolApp(key), gone: goneTools.has(key) }))
+    .filter((t) => t.bytes > 0 || goneTools.has(t.key));
+  // a removed tool's leftovers outside these folders (its ~/Library files) count toward its column too,
+  // so the column always holds what its Clear button takes
+  for (const t of tools) {
+    const inside = (p) => places[t.key].some((d) => p === d || p.startsWith(d + '/'));
+    const extra = [...new Set(worth.filter((i) => i.group === 'gone' && i.tool === t.key).flatMap((i) => i.paths))].filter((p) => !inside(p));
+    t.bytes += extra.filter((p) => !extra.some((q) => q !== p && p.startsWith(q + '/'))).reduce((n, p) => n + (measured.get(p) || 0), 0);
+  }
 
   last = { at: Date.now(), items: worth, running };
   return { ok: true, data: { at: last.at, items: worth.map(({ repo, threadId, ...rest }) => rest), tools, retention, running } };
@@ -579,11 +944,20 @@ async function cleanOne(item, running) {
     if (r.err) throw new Error(r.stderr.trim() || 'git would not remove it');
     return;
   }
-  if (item.kind === 'codex-leftovers') {
-    // checked again now: if Codex came back since the scan, its data stays
-    if (codexBin() || runningTools(await processes()).codex) throw new Error('Codex is installed again, so its data stays');
-    if (path.resolve(item.paths[0]) !== P.codex) throw new Error('Not Codex’s folder');
-    if (exists(P.codex)) await shell.trashItem(P.codex);
+  if (item.kind === 'leftovers') {
+    // checked again now: if the tool came back since the scan, its data stays
+    const l = LEFTOVERS.find((x) => x.key === item.leftover);
+    if (!l) throw new Error('Grub doesn’t know that one');
+    if (!l.gone()) throw new Error(`${TOOLS[l.tool]} is installed again, so its data stays`);
+    if (runningTools(await processes())[l.runs]) throw new Error('It’s running. Quit it first');
+    const allowed = new Set(l.paths().map((p) => path.resolve(p)));
+    const refused = [];
+    for (const p of item.paths) {
+      if (!allowed.has(path.resolve(p))) throw new Error(`Not ${TOOLS[l.tool]}’s folder`);
+      // macOS guards some app containers; one it won't let go of shouldn't stop the rest
+      if (exists(p)) await shell.trashItem(p).catch(() => refused.push(p.replace(HOME, '~')));
+    }
+    if (refused.length) throw new Error(`macOS kept ${refused.join(', ')}`);
     return;
   }
   if (item.kind === 'vacuum') {
@@ -618,4 +992,46 @@ async function clean(ids) {
   return { ok: true, data: { results, freed: results.reduce((n, r) => n + (r.ok ? r.bytes || 0 : 0), 0) } };
 }
 
-module.exports = { scan, clean, DEFAULT_RETENTION };
+// Mole's uninstall finds an app's files in ~/Library by its bundle id, but these tools keep most of their data
+// in dot folders at the top of your home. After Grub uninstalls one, this says what's left there so the person
+// can take it in the same step. `app` is what the app alone left; `all` adds a command-line tool that's still
+// installed (Cursor's cursor-agent), which only goes when they say so.
+async function leftoversForApp(appPath) {
+  const name = path.basename(appPath, '.app');
+  const keys = LEFTOVERS.filter((l) => l.apps.includes(name)).map((l) => l.key);
+  if (!keys.length || fs.existsSync(appPath)) return null;
+  const running = runningTools(await processes());
+  const found = leftovers(running).filter((i) => keys.includes(i.leftover));
+  if (!found.length) return null;
+  const measured = await sizes([...new Set(found.flatMap((i) => i.paths))]);
+  const pack = (list) => {
+    const paths = [...new Set(list.flatMap((i) => i.paths))];
+    // a folder inside another one on the list is already counted by it
+    const top = paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(q + '/')));
+    return { keys: list.map((i) => i.leftover), bytes: top.reduce((n, p) => n + (measured.get(p) || 0), 0), paths: top.map((p) => ({ path: p.replace(HOME, '~'), bytes: measured.get(p) || 0 })) };
+  };
+  const app = found.filter((i) => !LEFTOVERS.find((l) => l.key === i.leftover)?.askOnly);
+  const extra = found.filter((i) => LEFTOVERS.find((l) => l.key === i.leftover)?.askOnly);
+  return { tool: name, app: app.length ? pack(app) : null, all: extra.length ? pack(found) : null, keep: LEFTOVERS.find((l) => l.key === extra[0]?.leftover)?.keep || null };
+}
+
+// Clears the leftovers named by key, checked again first exactly as the AI tools page does.
+async function clearLeftovers(keys) {
+  const running = runningTools(await processes());
+  const items = leftovers(running).filter((i) => keys.includes(i.leftover));
+  const measured = await sizes([...new Set(items.flatMap((i) => i.paths))]);
+  let bytes = 0;
+  const failed = [];
+  for (const i of items) {
+    try {
+      const before = i.paths.filter(exists);
+      await cleanOne(i, running);
+      bytes += before.filter((p) => !before.some((q) => q !== p && p.startsWith(q + '/'))).reduce((n, p) => n + (measured.get(p) || 0), 0);
+    } catch (err) {
+      failed.push(`${i.name}: ${err.message}`);
+    }
+  }
+  return { ok: !failed.length, bytes, failed };
+}
+
+module.exports = { scan, clean, leftoversForApp, clearLeftovers, DEFAULT_RETENTION };

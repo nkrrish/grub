@@ -102,6 +102,7 @@ function sweepRender() {
   const s = sweep.state;
   const body = $('#sweep-body');
   if (!s) return;
+  if (s.phase !== 'done') delete body.dataset.result;
   if (s.phase === 'scanning' || s.phase === 'running') {
     $('#sweep-title').textContent = s.phase === 'scanning' ? 'Looking around your Mac…' : 'Cleaning on its own…';
     body.replaceChildren(digging(`${s.step.label}…`));
@@ -110,21 +111,22 @@ function sweepRender() {
   if (s.phase === 'done' && s.result) {
     $('#sweep-title').textContent = s.result.freed > 0 ? `Cleared ${bytes(s.result.freed)}.` : 'All done.';
     const names = Object.fromEntries(SWEEP_GROUPS.map((g) => [g.key, g.title]));
-    body.replaceChildren(
-      el(
-        'div',
-        { class: 'list sweep-result' },
-        ...s.result.steps.map((st) =>
-          el(
-            'div',
-            { class: 'row' },
-            el('div', { class: 'row-name' }, names[st.key], el('span', { class: 'row-sub' }, st.ok ? 'Done' : st.error || (st.failed ? `${st.failed} left alone` : 'Didn’t finish'))),
-            el('div', { class: 'row-size' }, st.bytes ? bytes(st.bytes) : '')
-          )
-        )
-      ),
-      el('p', { class: 'note' }, 'Installers and AI tool files are in the Trash if you want anything back.')
-    );
+    // drawn once per result, so coming back to the page doesn't replay the count
+    if (body.dataset.result === String(s.result.at)) return sweepBar();
+    body.dataset.result = String(s.result.at);
+    const steps = s.result.steps;
+    const trashed = steps.some((st) => (st.key === 'installers' || st.key === 'ai') && st.bytes);
+    const card = {
+        amount: s.result.freed || steps.reduce((n, st) => n + (st.bytes || 0), 0),
+        verb: 'cleared',
+        disk: s.result.disk,
+        rows: steps.map((st) => ({ name: names[st.key], sub: st.ok ? 'Done' : st.error || (st.failed ? `${st.failed} left alone` : 'Didn’t finish'), size: st.bytes })),
+        note: trashed ? 'Installers and AI tool files are in the Trash, so you can put them back. Their space comes back once you empty the Trash.' : '',
+        empty: 'Nothing to clear. Your Mac was already tidy.',
+    };
+    body.replaceChildren(payoff(card));
+    // only a run that just finished pops; opening the page later just shows the result
+    if (!s.result.stopped && card.amount > 0 && Date.now() - s.result.at < 60000) celebrate({ title: $('#sweep-title').textContent, ...card });
     return sweepBar();
   }
   if (!s.found) {

@@ -30,9 +30,12 @@ function workMood() {
 
 let askResolve = null;
 
-function ask({ title, body, list, password, error, buttons }) {
+function ask({ title, body, list, password, error, buttons, content }) {
   $('#ask-title').textContent = title;
   $('#ask-body').textContent = body || '';
+  $('#ask-body').hidden = !body;
+  $('#ask-content').hidden = !content;
+  $('#ask-content').replaceChildren(...(content ? [content] : []));
   $('#ask-error').textContent = error || '';
   $('#ask-error').hidden = !error;
   const listEl = $('#ask-list');
@@ -121,6 +124,8 @@ function ensureTerm() {
     term.write(d, scheduleParse);
   });
   window.mole.session.onExit(onExit);
+  window.mole.session.onNote((t) => ($('#run-activity').textContent = t));
+  window.mole.session.onExtra((x) => run && (run.extra = x));
   new ResizeObserver(refit).observe($('#term'));
   // the terminal font loads lazily; row height grows when it lands, so measure again
   document.fonts.addEventListener('loadingdone', refit);
@@ -216,6 +221,9 @@ async function runTask(opts) {
   term.reset();
   const key = taskKey(opts);
   run = { opts, key, handled: {}, busy: false, exited: false, picker: null, model: null, origin: originOf(opts), startedAt: Date.now() };
+  // free space before, so the end can show what the job did to the disk
+  const started = run;
+  window.mole.diskFree().then((d) => (started.diskBefore = d));
   lastData = Date.now();
   clearInterval(quietTimer);
   quietTimer = setInterval(tickQuiet, 1000);
@@ -230,7 +238,13 @@ async function runTask(opts) {
   document.body.classList.add('is-running');
   if (opts.command === 'uninstall') appsLoaded = false;
   goToRun();
-  await window.mole.session.start({ ...opts, cols: term.cols, rows: term.rows });
+  try {
+    await window.mole.session.start({ ...opts, cols: term.cols, rows: term.rows });
+  } catch (err) {
+    // Mole never started, so no exit will come; end the run here rather than "Warming up…" forever
+    term.write(`Grub couldn't start Mole: ${String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}\r\n`);
+    onExit(-1);
+  }
 }
 
 function stopTask() {
@@ -359,11 +373,15 @@ function onExit(code) {
   $('#run-title').textContent = run.stopping ? 'Stopped. Grub put its fork down.' : refusal ? refusal.title : ok ? t.done(s, run.opts) : 'Grub stopped early.';
   const dry = run.key.endsWith('-dry');
   const words = lastWords(screen);
+  const result = !refusal && (ok || (run.stopping && s.freed)) ? payoffOf(s, said) : null;
   $('#run-activity').textContent =
     (run.stopping && 'Anything already cleaned stays cleaned; nothing else was touched.') ||
     refusal?.text ||
+    (result && (dry ? 'Nothing was touched. That was just a sniff.' : '')) ||
     s.lines.join(' · ') ||
     (dry ? 'Nothing was touched. That was just a sniff.' : code === 0 ? 'Done.' : words.length ? `The engine said: ${words.join(' ')}` : 'Open "Watch Grub work" to see what happened.');
+  // with leftovers to ask about, the win waits until that's answered
+  if (result) showPayoff(result, !(run.extra && ok));
   document.body.classList.remove('is-running');
   setMood(ok ? 'done' : 'sad');
   const next =
@@ -379,6 +397,110 @@ function onExit(code) {
       : [{ label: 'Done', primary: true, onclick: closeRunner }];
   setRunActions(actions);
   syncRunner();
+  if (run.extra && ok) offerLeftovers(run.extra, run.opts.label || run.extra.tool).finally(() => run?.result && showPayoff(run.result, true));
+}
+
+// Uninstalling clears an app and its ~/Library files. Some tools keep more in dot folders in your home, where
+// uninstallers don't look; this lists it with sizes and takes it in the same step.
+async function offerLeftovers(x, label) {
+  const whole = x.all || x.app;
+  const both = x.all && x.app;
+  const v = await ask({
+    title: `${label} left ${bytes(whole.bytes)} in your home folder`,
+    body: both
+      ? `Uninstallers don’t look here. The ${x.keep} command is still installed and uses some of it; keep it if you run ${x.keep} on its own.`
+      : x.keep
+        ? `This is the ${x.keep} command and its settings, which are still installed. Move them too unless you run ${x.keep} on its own.`
+        : 'Uninstallers don’t look here, so it would stay behind. It goes to the Trash, so you can put it back.',
+    list: whole.paths.map((p) => `${p.path} · ${p.bytes ? bytes(p.bytes) : 'shortcut'}`),
+    buttons: [
+      { label: 'Keep it', value: 'cancel' },
+      ...(both ? [{ label: `Keep ${x.keep}`, value: 'app' }] : []),
+      { label: both ? 'Move all to Trash' : 'Move to Trash', value: 'all', primary: true },
+    ],
+  });
+  if (v !== 'all' && v !== 'app') return;
+  const keys = v === 'app' ? x.app.keys : whole.keys;
+  const res = await window.mole.ai.clearLeftovers(keys);
+  if (res.bytes && run?.result) {
+    run.result.amount += res.bytes;
+    run.result.rows.push({ name: 'Leftovers in your home folder', sub: whole.paths.map((p) => p.path).join(', '), size: res.bytes });
+  }
+  if (res.failed?.length) $('#run-activity').textContent = `Grub left some alone: ${res.failed.join('; ')}`;
+  if (typeof aiLoad === 'function') aiLoad({ quiet: true });
+}
+
+/* ---------- the pay-off ---------- */
+
+const PAYOFF_VERB = {
+  clean: 'cleared',
+  tidy: 'cleared, then the burrow freshened',
+  purge: 'of build junk buried',
+  installer: 'of old installers binned',
+  uninstall: 'moved to the Trash',
+  'clean-dry': 'Grub could eat',
+};
+
+// Mole's uninstall lists what it takes as "✓ /path , 12MB": the app itself, then its files in Library.
+function uninstallRows(said) {
+  const files = [...said.matchAll(/^\s*✓\s+([/~].+?)(?:\s*,\s*(\d+(?:\.\d+)?\s?(?:GB|MB|KB|B)))?\s*$/gm)].map((m) => ({ path: m[1], size: m[2] ? parseSize(m[2]) : 0 }));
+  const seen = new Set();
+  const unique = files.filter((f) => !seen.has(f.path) && seen.add(f.path));
+  const apps = unique.filter((f) => /\.app$/.test(f.path));
+  const rest = unique.filter((f) => !/\.app$/.test(f.path));
+  return [
+    ...apps.map((a) => ({ name: a.path.split('/').pop(), sub: 'The app', size: a.size })),
+    ...(rest.length ? [{ name: 'Its files in Library', sub: `${rest.length} settings, caches and logs`, size: rest.reduce((n, f) => n + f.size, 0) }] : []),
+  ];
+}
+
+// What a finished run came to, in the shape payoff() draws.
+function payoffOf(s, said) {
+  const key = run.key;
+  const dry = key.endsWith('-dry');
+  const sections = run.model?.sections || [];
+  const sectionRows = sections
+    .map((sec) => {
+      const eaten = sec.items.filter((it) => it.mark === '→' || it.mark === '✓');
+      const size = eaten.reduce((n, it) => n + it.size, 0);
+      return { name: sec.name, sub: `${eaten.length} ${eaten.length === 1 ? 'thing' : 'things'}`, size, n: eaten.length };
+    })
+    .filter((r) => r.n);
+  if (key.startsWith('optimize')) {
+    const fixed = sections.flatMap((sec) => sec.items.filter((it) => it.mark === '✓' || it.mark === '→'));
+    return { count: true, amount: fixed.length, verb: dry ? (fixed.length === 1 ? 'thing Grub would freshen' : 'things Grub would freshen') : fixed.length === 1 ? 'fix applied' : 'fixes applied', rows: fixed.map((it) => ({ name: it.name })), dry, empty: 'Nothing needed fixing.' };
+  }
+  if (key === 'brew') {
+    const n = run.opts.names?.length || 0;
+    return n ? { count: true, amount: n, verb: n === 1 ? 'app updated' : 'apps updated', rows: run.opts.names.map((name) => ({ name })) } : null;
+  }
+  const rows = key === 'uninstall' ? uninstallRows(said) : sectionRows;
+  const amount = (dry ? s.found : parseSize(s.freed || '')) || rows.reduce((n, r) => n + (r.size || 0), 0);
+  return {
+    amount,
+    verb: PAYOFF_VERB[key] || 'cleared',
+    rows: rows.map(({ n, ...r }) => r),
+    dry,
+    trash: key === 'uninstall',
+    empty: dry ? 'Hardly a crumb in sight.' : 'Nothing to eat. Your Mac was already clean.',
+  };
+}
+
+async function showPayoff(result, win) {
+  const r = run;
+  r.result = result;
+  const after = await window.mole.diskFree();
+  if (run !== r) return;
+  const disk = after && { before: result.dry ? null : r.diskBefore?.free ?? null, after: after.free, total: after.total };
+  const note = result.dry
+    ? ''
+    : result.trash
+      ? 'It’s in the Trash, so you can put it back. The space comes back once you empty the Trash.'
+      : '';
+  $('#run-body').replaceChildren(payoff({ ...result, disk, note }));
+  // something really happened: pop it, with a button that finishes up
+  if (win && !result.dry && result.amount > 0) celebrate({ title: $('#run-title').textContent, ...result, disk, note, done: closeRunner });
+
 }
 
 /* ---------- reading the screen ---------- */

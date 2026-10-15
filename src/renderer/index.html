@@ -212,7 +212,7 @@
           <header class="view-head">
             <p class="eyebrow">Disk</p>
             <h1>Where did all the space go?</h1>
-            <p class="lede">Grub tunnels through a folder and ranks what's inside. Click a folder to dig deeper.</p>
+            <p class="lede">Grub tunnels through a folder and ranks what's inside. Click a folder to dig deeper, or right-click anything (or its ⋯) to open it, find it in Finder or move it to the Trash.</p>
             <div class="fresh" id="dig-fresh">
               <button class="fresh-btn" id="dig-refresh" title="Dig again" aria-label="Dig again">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
@@ -232,6 +232,13 @@
           </div>
           <div class="map" id="dig-map"></div>
           <div class="list" id="dig-list"></div>
+          <section class="others" id="dig-others" hidden>
+            <div class="others-head">
+              <h2>Outside your folder</h2>
+              <p class="others-lede">What macOS calls Other Users &amp; Shared. Grub only looks; nothing here gets touched.</p>
+            </div>
+            <div class="others-list" id="others-list"></div>
+          </section>
         </section>
 
         <!-- CHORES -->
@@ -277,7 +284,7 @@
           <header class="view-head">
             <p class="eyebrow">AI tools</p>
             <h1 id="ai-title">Sniffing through your AI tools…</h1>
-            <p class="lede">Claude Code, Codex, Cursor and OpenCode pile up old versions, caches, chats and worktrees. Grub never lists anything used in the last day, and everything it removes goes to the Trash.</p>
+            <p class="lede">Old versions, caches, chats and worktrees from Claude Code, Codex, Cursor and OpenCode. Nothing used in the last day is listed, and everything goes to the Trash.</p>
             <div class="fresh" id="ai-fresh">
               <button class="fresh-btn" id="ai-refresh" title="Dig again" aria-label="Dig again">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
@@ -285,10 +292,7 @@
               </button>
             </div>
           </header>
-          <div class="ai-tools" id="ai-tools"></div>
-          <div class="toolbar ai-toolbar">
-            <div class="ai-retention" id="ai-retention"></div>
-          </div>
+          <section class="ai-footprint" id="ai-tools" aria-label="Space each tool takes"></section>
           <div id="ai-body"></div>
           </div>
           <div class="ai-bar">
@@ -412,11 +416,15 @@
       <div class="term" id="term"></div>
     </div>
 
+    <!-- the win: a job's pay-off, popped over the screen it finished on -->
+    <div class="modal win" id="win" role="dialog" aria-modal="true" aria-labelledby="win-title"></div>
+
     <!-- ask sheet -->
     <div class="modal" id="ask" role="alertdialog" aria-modal="true" aria-labelledby="ask-title">
       <img src="../../brand/mark.svg" alt="" width="56" height="56" />
       <h2 id="ask-title"></h2>
       <p id="ask-body"></p>
+      <div class="ask-content" id="ask-content" hidden></div>
       <ul class="ask-list" id="ask-list" hidden></ul>
       <input class="search ask-input" id="ask-input" type="password" placeholder="Mac password" aria-label="Mac password" autocomplete="off" hidden />
       <p class="ask-error" id="ask-error" hidden></p>

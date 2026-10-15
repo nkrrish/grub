@@ -383,20 +383,31 @@ function buildSession(opts) {
   return { file: mo(), args };
 }
 
-ipcMain.handle('session:start', (_e, opts) => {
+ipcMain.handle('session:start', async (_e, opts) => {
   const { file, args, label } = buildSession(opts);
   // a person asking for something beats a scheduled checkup
   scheduler.cancel();
   if (session) session.kill();
+  // Mole waits for an open app to quit before it uninstalls it; asking it to quit here first saves that wait.
+  // If it stays open (unsaved work, say), Mole asks about it exactly as before.
+  if (opts.command === 'uninstall' && typeof opts.path === 'string' && opts.path.endsWith('.app') && (await family(opts.path)).length) {
+    win?.webContents.send('session:note', `Closing ${path.basename(opts.path, '.app')} first…`);
+    await quitApp(opts.path, false);
+  }
   session = pty.spawn(file, args, { name: 'xterm-256color', cols: opts.cols, rows: opts.rows, cwd: HOME, env: ENV });
   const current = session;
   // the window reads the engine's screens and answers its prompts, so it runs at full speed in the background
   win?.webContents.setBackgroundThrottling(false);
   current.onData((d) => win?.webContents.send('session:data', d));
-  current.onExit(({ exitCode }) => {
+  current.onExit(async ({ exitCode }) => {
     if (session === current) {
       session = null;
       win?.webContents.setBackgroundThrottling(true);
+    }
+    // the AI tools keep data where Mole doesn't look; once the app is really gone, say what's left there
+    if (opts.command === 'uninstall' && !opts.dryRun && typeof opts.path === 'string') {
+      const extra = await aiTools.leftoversForApp(opts.path).catch(() => null);
+      if (extra) win?.webContents.send('session:extra', extra);
     }
     win?.webContents.send('session:exit', exitCode);
   });
@@ -710,6 +721,166 @@ ipcMain.handle('mole:history', () => runJson(mo(), ['history', '--json']));
 ipcMain.handle('mole:apps', (_e, fresh) => cached('apps', fresh, () => runJson(mo(), ['uninstall', '--list'])));
 ipcMain.handle('mole:home', () => HOME);
 ipcMain.handle('mole:reveal', (_e, p) => shell.showItemInFolder(p));
+// free and total space on the startup disk, for the before-and-after at the end of a job
+ipcMain.handle('disk:free', () => {
+  try {
+    const s = fs.statfsSync('/');
+    return { free: s.bavail * s.bsize, total: s.blocks * s.bsize };
+  } catch {
+    return null;
+  }
+});
+// A folder opens as its own Finder window, so hidden ones (.cache, .ollama) can be seen too.
+ipcMain.handle('fs:open', (_e, p) => typeof p === 'string' && path.isAbsolute(p) && shell.openPath(p));
+
+// Something on the Disk map is gone: take it out of every remembered folder and shrink the folders above it,
+// so the map is right straight away instead of after the next full dig.
+function forgetPaths(gone) {
+  const store = cacheStore();
+  for (const key of Object.keys(store)) {
+    if (!key.startsWith('analyze:')) continue;
+    const dir = key.slice('analyze:'.length);
+    if (gone.some((g) => dir === g.path || dir.startsWith(g.path + '/'))) {
+      delete store[key];
+      continue;
+    }
+    const entries = store[key].data?.entries;
+    if (!Array.isArray(entries)) continue;
+    for (const g of gone) {
+      const i = entries.findIndex((e) => e.path === g.path);
+      if (i >= 0) entries.splice(i, 1);
+      for (const e of entries) if (g.path.startsWith(e.path + '/')) e.size = Math.max(0, e.size - g.size);
+    }
+  }
+  saveCache();
+}
+
+ipcMain.handle('fs:missing', (_e, paths) =>
+  (Array.isArray(paths) ? paths : []).filter((p) => {
+    try {
+      fs.lstatSync(p);
+      return false;
+    } catch (err) {
+      return err.code === 'ENOENT';
+    }
+  })
+);
+ipcMain.handle('fs:forget', (_e, gone) => Array.isArray(gone) && forgetPaths(gone.filter((g) => typeof g?.path === 'string')));
+
+// Only things inside your home folder, and never home itself or the folders macOS can't live without.
+const KEEP = () => [HOME, path.join(HOME, 'Library'), path.join(HOME, '.Trash')];
+ipcMain.handle('fs:trash', async (_e, p, size) => {
+  if (typeof p !== 'string' || !path.isAbsolute(p)) return { ok: false, error: 'Grub doesn’t know that one.' };
+  const real = path.resolve(p);
+  if (!real.startsWith(HOME + '/') || KEEP().includes(real)) return { ok: false, error: 'macOS needs this one, so Grub leaves it alone.' };
+  try {
+    await shell.trashItem(real);
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+  forgetPaths([{ path: real, size: Number(size) || 0 }]);
+  return { ok: true };
+});
+
+/* ---------- other users & shared: what macOS lumps together outside your home folder ---------- */
+
+// `du -k -d 1` lines, "123\t/path", into a total and the folders inside, biggest first.
+function parseDu(lines, root) {
+  let total = 0;
+  const folders = [];
+  for (const l of lines) {
+    const m = /^(\d+)\t(.+)$/.exec(l);
+    if (!m) continue;
+    const size = +m[1] * 1024;
+    if (m[2].replace(/\/$/, '') === root) total = size;
+    else folders.push({ name: path.basename(m[2]), size });
+  }
+  return { total, folders: folders.filter((f) => f.size > 0).sort((a, b) => b.size - a.size) };
+}
+
+// Everyone's home except yours; names are plain account names, which keeps the admin script safe to build.
+function otherAccounts() {
+  try {
+    return fs
+      .readdirSync('/Users', { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith('.') && !['Shared', 'Guest'].includes(d.name))
+      .map((d) => d.name)
+      .filter((n) => path.join('/Users', n) !== HOME && /^[\w.-]+$/.test(n));
+  } catch {
+    return [];
+  }
+}
+
+async function fullName(user) {
+  const r = await run('/usr/bin/id', ['-F', user]);
+  return r.stdout.trim() || user;
+}
+
+// Their folders are closed to your account, so macOS's own admin prompt runs the measuring; Grub never sees the password.
+async function measureAccounts(names) {
+  const sh = names
+    .map(
+      (n) =>
+        `echo "U ${n}"; du -k -d 1 -x /Users/${n} 2>/dev/null; ` +
+        `for s in .Trash Downloads; do echo "C $s $(find /Users/${n}/$s -mindepth 1 -maxdepth 1 ! -name .DS_Store ! -name .localized 2>/dev/null | wc -l)"; done`
+    )
+    .join('; ');
+  const r = await run(
+    '/usr/bin/osascript',
+    ['-e', 'on run argv', '-e', 'do shell script (item 1 of argv) with prompt (item 2 of argv) with administrator privileges', '-e', 'end run', sh, 'Grub wants to measure the other accounts on this Mac. It only reads sizes; nothing is changed.'],
+    { timeout: 600000 }
+  );
+  if (r.err) return { ok: false, cancelled: /-128|cancel/i.test(r.stderr), error: r.stderr.trim() || r.err.message };
+  const users = [];
+  let cur;
+  for (const l of r.stdout.split(/\r\n|\r|\n/)) {
+    const u = /^U (.+)$/.exec(l);
+    const c = /^C (\S+)\s+(\d+)$/.exec(l);
+    if (u) users.push((cur = { name: u[1], lines: [], counts: {} }));
+    else if (c && cur) cur.counts[c[1]] = +c[2];
+    else if (cur) cur.lines.push(l);
+  }
+  return {
+    ok: true,
+    data: users.map(({ name, lines, counts }) => {
+      const { total, folders } = parseDu(lines, '/Users/' + name);
+      return { name, total, folders, trashItems: counts['.Trash'] ?? null, downloadItems: counts.Downloads ?? null };
+    }),
+  };
+}
+
+// Shared is readable by everyone, so it's measured each time; other accounts only when you ask (it needs your password).
+ipcMain.handle('others:get', async (_e, measure) => {
+  const names = otherAccounts();
+  const [shared, people] = await Promise.all([
+    run('/usr/bin/du', ['-k', '-d', '1', '-x', '/Users/Shared']).then((r) => parseDu(r.stdout.split('\n'), '/Users/Shared')),
+    Promise.all(names.map(async (n) => ({ name: n, fullName: await fullName(n) }))),
+  ]);
+  let measured;
+  if (measure && names.length) {
+    measured = await cached('others', true, () => measureAccounts(names));
+    if (!measured.ok) return { ok: false, cancelled: measured.cancelled, error: measured.error };
+  } else measured = cacheStore().others;
+  const byName = new Map((measured?.data || []).map((u) => [u.name, u]));
+  return {
+    ok: true,
+    shared,
+    measuredAt: measured?.at || null,
+    users: people.map((p) => ({ ...p, ...(byName.get(p.name) || {}) })),
+  };
+});
+
+// Finder hides dot folders (.cache, .ollama) unless this is on; ⌘⇧. flips it for one window only.
+ipcMain.handle('finder:hidden', async () => {
+  const r = await run('/usr/bin/defaults', ['read', 'com.apple.finder', 'AppleShowAllFiles']);
+  return /^(1|true|yes)$/i.test(r.stdout.trim());
+});
+ipcMain.handle('finder:setHidden', async (_e, on) => {
+  await run('/usr/bin/defaults', ['write', 'com.apple.finder', 'AppleShowAllFiles', '-bool', on ? 'true' : 'false']);
+  // Finder only rereads the setting when it starts; it reopens its windows on its own
+  await run('/usr/bin/killall', ['Finder']);
+  return !!on;
+});
 
 // Real app icons for lists; cached because the same apps show up on several screens.
 const iconCache = new Map();
@@ -729,6 +900,7 @@ ipcMain.handle('app:icon', async (_e, p) => {
   return iconCache.get(p);
 });
 ipcMain.handle('ai:scan', () => aiTools.scan(readSettings()));
+ipcMain.handle('ai:clearLeftovers', (_e, keys) => (Array.isArray(keys) ? aiTools.clearLeftovers(keys.filter((k) => typeof k === 'string')) : { ok: false }));
 ipcMain.handle('ai:clean', (_e, ids) => (Array.isArray(ids) ? aiTools.clean(ids.filter((i) => typeof i === 'string')) : { ok: false }));
 ipcMain.handle('startup:list', (_e, fresh) =>
   cached('startup', fresh, listStartup, (res) => !res.data.loginDenied && !res.data.loginError)

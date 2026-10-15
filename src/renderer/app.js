@@ -14,7 +14,7 @@ const CHORES = {
       'User and system caches, logs and temporary files',
       'Leftovers from apps that are already gone',
       'Anything you protect stays protected',
-      'Sniff first to see what Grub would eat',
+      'Chomp finds and cleans in one pass. Sniff is just for a look, and Chomp scans again after it',
     ],
     chomp: 'Chomp the junk',
     confirm: 'Grub will clean caches, logs and leftovers. Things you protect stay protected.',
@@ -114,6 +114,142 @@ function appIcon(path) {
   return slot;
 }
 
+/* ---------- the pay-off at the end of every job ---------- */
+
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Counts a number up once, so the result lands rather than just appears. Rare and earned, so worth the 700ms.
+function countUp(node, to, format) {
+  if (calm() || to <= 0) return (node.textContent = format(to));
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / 700);
+    node.textContent = format(to * (1 - Math.pow(1 - t, 4)));
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// What a job came to: one number, what it did to the disk, and what went.
+//   amount  bytes (or a count, with `count`)     verb   what happened to it ("cleared", "moved to the Trash")
+//   disk    { before, after, total } free space   rows   [{ name, size?, sub? }]   note   one line under it
+function payoff({ amount = 0, count = false, verb = '', disk = null, rows = [], note = '', empty = '', trash = false }) {
+  const fmt = count ? (n) => String(Math.round(n)) : (n) => bytes(n);
+  if (!amount && !rows.length) {
+    return el('section', { class: 'payoff is-empty' }, el('b', { class: 'payoff-empty-title' }, empty || 'Nothing to eat.'), note ? el('p', { class: 'payoff-note' }, note) : null);
+  }
+  const num = el('span', { class: 'payoff-amount' }, fmt(0));
+  countUp(num, amount, fmt);
+
+  let diskEl = null;
+  if (disk?.total && disk.after != null) {
+    const gain = disk.before != null ? disk.after - disk.before : 0;
+    const shown = gain > 1e6; // under a megabyte reads as noise next to gigabytes
+    // things moved to the Trash still take space; that part shows striped, as space waiting to come back
+    const pending = trash && !shown && amount > 1e6 ? amount : 0;
+    const used = Math.max(0, disk.total - disk.after);
+    const pct = (n) => (n / disk.total) * 100;
+    const gainEl = shown
+      ? el('i', { class: 'payoff-bar-gain', style: `--l:${pct(used)}%;--w:${Math.max(0.4, pct(gain))}%` })
+      : pending
+        ? el('i', { class: 'payoff-bar-pending', style: `--l:${pct(Math.max(0, used - pending))}%;--w:${Math.max(0.4, pct(pending))}%` })
+        : null;
+    diskEl = el(
+      'div',
+      { class: 'payoff-disk' },
+      el(
+        'div',
+        { class: 'payoff-disk-head' },
+        el('span', {}, 'Free space'),
+        el(
+          'span',
+          { class: 'payoff-disk-value' },
+          shown ? el('span', { class: 'payoff-was' }, `${bytes(disk.before)} → `) : null,
+          el('b', {}, bytes(disk.after)),
+          shown ? el('span', { class: 'payoff-gain' }, `+${bytes(gain)}`) : null,
+          pending ? el('span', { class: 'payoff-gain is-pending' }, `+${bytes(pending)} once you empty the Trash`) : null
+        )
+      ),
+      el('div', { class: 'payoff-bar', role: 'img', 'aria-label': `${bytes(disk.after)} free of ${bytes(disk.total)}` }, el('i', { class: 'payoff-bar-used', style: `--w:${(used / disk.total) * 100}%` }), gainEl)
+    );
+  }
+
+  const more = rows.length > 6 ? rows.length - 6 : 0;
+  return el(
+    'section',
+    { class: 'payoff' },
+    el('div', { class: 'payoff-hero' }, num, el('span', { class: 'payoff-verb' }, verb)),
+    diskEl,
+    rows.length
+      ? el(
+          'ul',
+          { class: 'payoff-rows' },
+          ...rows.slice(0, 6).map((r) =>
+            el('li', {}, el('span', { class: 'payoff-row-name' }, r.name, r.sub ? el('small', {}, r.sub) : null), r.size ? el('b', {}, bytes(r.size)) : null)
+          ),
+          more ? el('li', { class: 'payoff-more' }, `+${more} more`) : null
+        )
+      : null,
+    note ? el('p', { class: 'payoff-note' }, note) : null
+  );
+}
+
+// Something really happened: pop the pay-off over the screen, with a Grub-flavoured button to take the win.
+// The × just closes it and leaves the result where it was; the big button also finishes up (`done`).
+// Grub's thanks, sized to the meal: a snack, a proper meal, or a feast. Short enough to sit on a button.
+const WIN_LABELS = {
+  any: ['Good Grub!', 'Yum, thanks!', 'Nom nom, done!', 'Thanks, friend!', 'Grub says thanks!', 'Happy Grub!', 'Much obliged!', 'Cheers, Grub!'],
+  snack: ['Tasty snack!', 'A little nibble!', 'Crumbs cleared!', 'Every crumb counts!'],
+  meal: ['Delicious, thanks!', 'What a meal!', 'Belly full, thanks!', 'That hit the spot!'],
+  feast: ['What a feast!', '*burp* Thank you!', 'Grub is stuffed!', 'Best meal ever!', 'Full burrow, happy Grub!'],
+};
+let lastWin = '';
+
+function winLabel(amount, count) {
+  const size = count ? null : amount >= 5e9 ? 'feast' : amount >= 5e8 ? 'meal' : 'snack';
+  const pool = [...WIN_LABELS.any, ...(size ? WIN_LABELS[size] : [])].filter((l) => l !== lastWin);
+  lastWin = pool[Math.floor(Math.random() * pool.length)];
+  return lastWin;
+}
+let winDone = null;
+
+function celebrate({ title, done, ...card }) {
+  const box = $('#win');
+  winDone = done || null;
+  const go = el('button', { class: 'btn btn-primary win-go', onclick: () => closeWin(true) }, winLabel(card.amount || 0, card.count));
+  box.replaceChildren(
+    el('button', { class: 'win-close', 'aria-label': 'Close', title: 'Close', onclick: () => closeWin(false) }, icon('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>')),
+    el('img', { class: 'win-mark', src: '../../brand/mark.svg', width: 64, height: 64, alt: '' }),
+    el('h2', { id: 'win-title' }, title),
+    payoff(card),
+    el('div', { class: 'modal-actions' }, go)
+  );
+  document.body.classList.add('win-open');
+  go.focus();
+}
+
+function closeWin(finish) {
+  if (!document.body.classList.contains('win-open')) return;
+  document.body.classList.remove('win-open');
+  const done = winDone;
+  winDone = null;
+  if (finish) done?.();
+}
+
+document.addEventListener('keydown', (e) => e.key === 'Escape' && closeWin(false));
+$('#scrim').addEventListener('click', () => closeWin(false));
+
+// A quiet line at the bottom of the window for small jobs that don't get a screen of their own.
+function toast(text) {
+  const t = el('div', { class: 'toast', role: 'status' }, text);
+  document.body.append(t);
+  requestAnimationFrame(() => t.classList.add('is-in'));
+  setTimeout(() => {
+    t.classList.remove('is-in');
+    setTimeout(() => t.remove(), 200);
+  }, 3600);
+}
+
 function digging(text) {
   return el(
     'div',
@@ -207,6 +343,7 @@ function show(view, chore) {
   if (view === 'chores') renderChore(chore);
   if (view === 'dig') {
     const known = digState.cache.get(digState.path);
+    if (!othersLoaded) loadOthers(false);
     if (!digState.loaded) dig(digState.home);
     // a run since the last visit forgot this folder, or it's just old: rescan behind the current view
     else if (!known || isStale(known.at, TTL.disk)) dig(digState.path, null, true);
@@ -459,6 +596,7 @@ async function dig(target, fromTile, fresh) {
   renderDig();
   zoom?.reveal();
   setFreshness('dig-fresh', res.at);
+  pruneGone();
   if (!fresh && isStale(res.at, TTL.disk)) dig(target, null, true);
 }
 
@@ -547,9 +685,10 @@ function renderDig() {
           tabindex: e.is_dir ? '0' : null,
           onclick: () => e.is_dir && dig(e.path),
           onkeydown: (ev) => e.is_dir && ev.key === 'Enter' && dig(e.path),
+          oncontextmenu: (ev) => DigMenu.open(ev, e),
         },
         icon(e.is_dir ? ICON_DIR : ICON_FILE),
-        el('div', { class: 'row-name' }, e.name),
+        el('div', { class: 'row-name' }, e.name, isHidden(e) ? el('span', { class: 'row-sub' }, 'Hidden in Finder') : null),
         el('div', { class: 'bar' }, el('div', { class: 'bar-fill', style: `--v:${e.size / max}` })),
         el('div', { class: 'row-size' }, bytes(e.size)),
         el(
@@ -562,7 +701,8 @@ function renderDig() {
             },
           },
           'Show in Finder'
-        )
+        ),
+        moreButton(e)
       )
     )
   );
@@ -642,24 +782,248 @@ function renderMap(map, entries) {
         {
           class: `tile ${tileTone(e, share)}${tiny ? ' is-tiny' : ''}${small ? ' is-small' : ''}`,
           style: `left:${x + GAP}px;top:${y + GAP}px;width:${tw}px;height:${th}px;--i:${Math.min(i, 24)};--size-font:${sizeFont}px`,
-          title: `${e.name} · ${bytes(e.size)} · ${(share * 100).toFixed(1)}%`,
+          title: `${e.name} · ${bytes(e.size)} · ${(share * 100).toFixed(1)}%${e.crumbs ? '' : ' · Right-click for more'}`,
           'aria-label': `${e.name}, ${bytes(e.size)}. ${hint}`,
           onclick: (ev) => {
             if (map.classList.contains('is-zooming')) return;
             e.crumbs ? setLayout('list') : e.is_dir ? dig(e.path, ev.currentTarget) : window.mole.reveal(e.path);
           },
+          oncontextmenu: (ev) => DigMenu.open(ev, e),
         },
-        el('span', { class: 'tile-top' }, icon(e.crumbs ? ICON_TILE_CRUMBS : e.is_dir ? ICON_TILE_DIR : ICON_TILE_FILE), el('b', {}, e.name)),
+        el(
+          'span',
+          { class: 'tile-top' },
+          icon(e.crumbs ? ICON_TILE_CRUMBS : e.is_dir ? ICON_TILE_DIR : ICON_TILE_FILE),
+          el('b', {}, e.name),
+          isHidden(e) ? el('span', { class: 'tile-tag', title: 'Finder hides names that start with a dot. Right-click to open it.' }, 'Hidden') : null
+        ),
         el(
           'span',
           { class: 'tile-bottom' },
           el('span', { class: 'tile-size' }, bytes(e.size)),
           el('span', { class: 'tile-share' }, share >= 0.01 ? `${Math.round(share * 100)}%` : '<1%')
         ),
-        el('span', { class: 'tile-hint' }, hint, ' →')
+        el('span', { class: 'tile-hint' }, hint, ' →'),
+        e.crumbs || tiny ? null : moreButton(e, 'tile-more')
       );
     })
   );
+}
+
+/* Right-click on a tile or row: open it, find it, or send it to the Trash. */
+
+const isHidden = (e) => e.name?.startsWith('.');
+const where = (p) => p.replace(digState.home, '~');
+
+// The visible way in to the same menu, so nobody has to guess that right-click does something.
+function moreButton(e, cls = 'row-more') {
+  const open = (ev) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+    const r = ev.currentTarget.getBoundingClientRect();
+    DigMenu.open({ preventDefault() {}, clientX: r.right - 4, clientY: r.bottom + 4 }, e);
+  };
+  return el(
+    'span',
+    {
+      class: `proc-more ${cls}`,
+      role: 'button',
+      tabindex: '0',
+      title: 'More: open, show in Finder, move to Trash',
+      'aria-label': `More for ${e.name}`,
+      onclick: open,
+      onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && open(ev),
+    },
+    '⋯'
+  );
+}
+
+const DigMenu = (() => {
+  const menu = el('div', { class: 'proc-menu dig-menu', role: 'menu', hidden: '' });
+  document.body.append(menu);
+  const item = (text, onclick, cls = '') =>
+    el('button', { class: `proc-menu-item ${cls}`, role: 'menuitem', onclick: () => (close(), onclick()) }, text);
+  const note = (text) => el('p', { class: 'proc-menu-note' }, text);
+  const line = () => el('hr', { class: 'proc-menu-line' });
+
+  function close() {
+    menu.hidden = true;
+  }
+
+  async function open(ev, e) {
+    ev.preventDefault();
+    if (e.crumbs) return close();
+    const hidden = isHidden(e);
+    const precious = [digState.home + '/Library', digState.home + '/.Trash'].includes(e.path);
+    const showsHidden = hidden && (await window.mole.finderHidden());
+    menu.replaceChildren(
+      ...[
+        e.is_dir && item('Dig in', () => dig(e.path)),
+        item(e.is_dir ? 'Open in Finder' : 'Open', () => window.mole.open(e.path)),
+        item('Show in Finder', () => window.mole.reveal(e.path)),
+        hidden && note(showsHidden ? 'Finder is showing hidden files.' : 'Finder hides names that start with a dot.'),
+        hidden && item(showsHidden ? 'Hide hidden files in Finder' : 'Show hidden files in Finder', () => toggleFinderHidden(!showsHidden)),
+        line(),
+        precious ? note('macOS needs this one, so Grub leaves it alone.') : item('Move to Trash…', () => trashEntry(e), 'is-danger'),
+      ].filter(Boolean)
+    );
+    menu.hidden = false;
+    // at the pointer, kept inside the window
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    menu.style.left = `${Math.max(8, Math.min(ev.clientX, innerWidth - w - 8))}px`;
+    menu.style.top = `${Math.max(8, ev.clientY + h > innerHeight - 8 ? ev.clientY - h : ev.clientY)}px`;
+  }
+
+  document.addEventListener('pointerdown', (ev) => !menu.contains(ev.target) && close());
+  document.addEventListener('keydown', (ev) => ev.key === 'Escape' && close());
+  addEventListener('scroll', close, true);
+  addEventListener('blur', close);
+  return { open };
+})();
+
+async function toggleFinderHidden(on) {
+  const v = await ask({
+    title: on ? 'Show hidden files in Finder?' : 'Hide hidden files again?',
+    body: on
+      ? 'Folders like .cache and .ollama will show up in Finder, a little faded. Finder restarts to pick this up, and its windows come back on their own. You can also press ⌘⇧. in any Finder window.'
+      : 'Finder goes back to hiding names that start with a dot. It restarts to pick this up.',
+    buttons: [
+      { label: 'Not now', value: 'cancel' },
+      { label: on ? 'Show them' : 'Hide them', value: 'ok', primary: true },
+    ],
+  });
+  if (v === 'ok') window.mole.setFinderHidden(on);
+}
+
+async function trashEntry(e) {
+  const v = await ask({
+    title: `Move ${e.name} to the Trash?`,
+    body: `${where(e.path)} · ${bytes(e.size)}. ${e.is_dir ? 'Everything inside it goes too. ' : ''}You can put it back from the Trash until you empty it; the space comes back once you do.`,
+    buttons: [
+      { label: 'Keep it', value: 'cancel' },
+      { label: 'Move to Trash', value: 'ok', primary: true },
+    ],
+  });
+  if (v !== 'ok') return;
+  const res = await window.mole.trash(e.path, e.size);
+  if (!res.ok) return ask({ title: `Grub couldn't move ${e.name}`, body: res.error, buttons: [{ label: 'OK', value: 'ok', primary: true }] });
+  dropGone([e]);
+  toast(`${e.name} · ${bytes(e.size)} is in the Trash. Empty it to get the space back.`);
+}
+
+// Main has already fixed its remembered folders; this view drops the item now and re-reads the rest from there.
+function dropGone(gone) {
+  const paths = new Set(gone.map((g) => g.path));
+  digState.entries = digState.entries.filter((e) => !paths.has(e.path));
+  digState.cache.clear();
+  renderDig();
+}
+
+// Deleted in Finder (or anywhere) since the last dig: take it off the map without waiting for a rescan.
+async function pruneGone() {
+  const target = digState.path;
+  const entries = digState.entries || [];
+  if (!entries.length) return;
+  const missing = new Set(await window.mole.missing(entries.map((e) => e.path)));
+  if (!missing.size || digState.path !== target) return;
+  const gone = entries.filter((e) => missing.has(e.path)).map((e) => ({ path: e.path, size: e.size }));
+  await window.mole.forget(gone);
+  dropGone(gone);
+}
+
+addEventListener('focus', () => $('#view-dig').classList.contains('is-active') && pruneGone());
+
+/* Outside your folder: the other accounts and /Users/Shared. Read-only; Grub says what's there and how to clear it. */
+
+let othersLoaded = false;
+const folderLabel = (n) => (n === '.Trash' ? 'Trash' : n);
+const itemCount = (n) => `${n} ${n === 1 ? 'item' : 'items'}`;
+
+async function loadOthers(measure) {
+  othersLoaded = true;
+  const btn = $('#others-measure');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Measuring…';
+  }
+  const res = await window.mole.others(measure);
+  if (!res.ok) {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Measure';
+    }
+    if (!res.cancelled) $('#others-error')?.replaceChildren('Grub couldn’t measure them: ' + res.error);
+    return;
+  }
+  renderOthers(res);
+}
+
+function otherRow({ title, sub, size, folders, tips, action }) {
+  return el(
+    'div',
+    { class: 'other' },
+    el(
+      'div',
+      { class: 'other-top' },
+      el('div', { class: 'other-name' }, el('b', {}, title), el('span', { class: 'row-sub' }, sub)),
+      size != null ? el('div', { class: 'other-size' }, bytes(size)) : action
+    ),
+    folders?.length
+      ? el('div', { class: 'other-folders' }, ...folders.slice(0, 6).map((f) => el('span', { class: 'chip' }, `${folderLabel(f.name)} · ${bytes(f.size)}`)))
+      : null,
+    tips?.length ? el('ul', { class: 'other-tips' }, ...tips.map((t) => el('li', {}, t))) : null
+  );
+}
+
+function renderOthers({ shared, users, measuredAt }) {
+  const rows = [];
+  for (const u of users) {
+    const who = u.fullName && u.fullName !== u.name ? `${u.fullName} (${u.name})` : u.name;
+    const first = (u.fullName || u.name).split(' ')[0];
+    if (u.total == null) {
+      rows.push(
+        otherRow({
+          title: who,
+          sub: 'Another account on this Mac. Its folders are private, so seeing their size takes your Mac password.',
+          action: el('button', { class: 'row-act', id: 'others-measure', onclick: () => loadOthers(true) }, 'Measure'),
+        })
+      );
+      continue;
+    }
+    const size = (n) => u.folders.find((f) => f.name === n)?.size || 0;
+    const trash = size('.Trash');
+    const downloads = size('Downloads');
+    const tips = [];
+    if (trash >= 1e6)
+      tips.push(
+        `Trash: ${u.trashItems != null ? itemCount(u.trashItems) + ', ' : ''}${bytes(trash)}. It’s already thrown away, just not emptied. Sign in as ${first} and choose Finder → Empty Trash to get the space back.`
+      );
+    if (downloads >= 1e6)
+      tips.push(
+        `Downloads: ${u.downloadItems != null ? itemCount(u.downloadItems) + ', ' : ''}${bytes(downloads)}. Old installers and one-off files pile up here; clearing what ${first} no longer needs could free a good chunk of it.`
+      );
+    if (size('Library') >= 5e9) tips.push(`Library: ${bytes(size('Library'))} of app data and caches. Running Grub while signed in as ${first} cleans the caches in it.`);
+    rows.push(otherRow({ title: who, sub: `Measured ${ago(measuredAt)}. Only ${first} can clear these, from their own account.`, size: u.total, folders: u.folders, tips }));
+  }
+  if (shared.total) {
+    const top = shared.folders.slice(0, 2).map((f) => f.name);
+    rows.push(
+      otherRow({
+        title: 'Shared',
+        sub: 'One folder every account on this Mac can use.',
+        size: shared.total,
+        folders: shared.folders,
+        tips: [
+          `Mostly files apps keep for everyone${top.length ? ` (${top.join(', ')})` : ''}. They go away when you uninstall the app that put them there, from Evict.`,
+        ],
+      })
+    );
+  }
+  $('#dig-others').hidden = !rows.length;
+  $('#others-list').replaceChildren(...rows, el('p', { class: 'other-error', id: 'others-error' }));
+  if (measuredAt && users.some((u) => u.total != null))
+    $('#others-list').append(el('button', { class: 'other-again', id: 'others-measure', onclick: () => loadOthers(true) }, 'Measure again'));
 }
 
 function setLayout(layout) {

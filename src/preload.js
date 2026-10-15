@@ -15,6 +15,14 @@ contextBridge.exposeInMainWorld('mole', {
   dropCache: (prefixes) => ipcRenderer.invoke('cache:drop', prefixes),
   home: () => ipcRenderer.invoke('mole:home'),
   reveal: (p) => ipcRenderer.invoke('mole:reveal', p),
+  open: (p) => ipcRenderer.invoke('fs:open', p),
+  diskFree: () => ipcRenderer.invoke('disk:free'),
+  trash: (p, size) => ipcRenderer.invoke('fs:trash', p, size),
+  missing: (paths) => ipcRenderer.invoke('fs:missing', paths),
+  forget: (gone) => ipcRenderer.invoke('fs:forget', gone),
+  others: (measure) => ipcRenderer.invoke('others:get', measure),
+  finderHidden: () => ipcRenderer.invoke('finder:hidden'),
+  setFinderHidden: (on) => ipcRenderer.invoke('finder:setHidden', on),
   appIcon: (p) => ipcRenderer.invoke('app:icon', p),
   quitApp: (app, force) => ipcRenderer.invoke('app:quitProcess', { app, force }),
   watchStatus: () => ipcRenderer.send('status:start'),
@@ -30,6 +38,7 @@ contextBridge.exposeInMainWorld('mole', {
   ai: {
     scan: () => ipcRenderer.invoke('ai:scan'),
     clean: (ids) => ipcRenderer.invoke('ai:clean', ids),
+    clearLeftovers: (keys) => ipcRenderer.invoke('ai:clearLeftovers', keys),
   },
   schedule: {
     get: () => ipcRenderer.invoke('schedule:get'),
@@ -81,5 +90,7 @@ contextBridge.exposeInMainWorld('mole', {
     kill: () => ipcRenderer.send('session:kill'),
     onData: on('session:data'),
     onExit: on('session:exit'),
+    onNote: on('session:note'),
+    onExtra: on('session:extra'),
   },
 });

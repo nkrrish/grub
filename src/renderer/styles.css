@@ -1267,6 +1267,119 @@ body.ask-open #ask {
   white-space: nowrap;
 }
 
+/* ---------- outside your folder: other accounts and Shared ---------- */
+
+.others {
+  margin-top: 28px;
+}
+
+.others[hidden] {
+  display: none;
+}
+
+.others-head h2 {
+  font: 600 18px/1.2 var(--font-display);
+}
+
+.others-lede {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.others-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.other {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.other-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.other-name {
+  min-width: 0;
+}
+
+.other-name .row-sub {
+  white-space: normal;
+}
+
+.other-size {
+  flex: none;
+  font: 600 20px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.other-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.other-tips {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.other-error {
+  margin: 0;
+  padding: 10px 16px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.other-error:empty {
+  display: none;
+}
+
+.other-again {
+  align-self: flex-start;
+  padding: 10px 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .other-again:hover {
+    color: var(--text);
+  }
+}
+
+/* "Hidden": Finder won't show this dot folder, which is why it seemed to be missing */
+.tile-tag {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
+}
+
+.tile.is-tiny .tile-tag {
+  display: none;
+}
+
 .tile-bottom {
   display: flex;
   align-items: baseline;
@@ -1298,6 +1411,54 @@ body.ask-open #ask {
 
 .tile.is-small {
   padding: 9px 10px;
+}
+
+/* ⋯ on Disk rows and tiles: the visible door to the right-click menu */
+#dig-list .row {
+  grid-template-columns: 28px minmax(0, 1fr) 160px 90px auto auto;
+}
+
+.tile .tile-more {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tile-ink) 14%, transparent);
+  color: var(--tile-ink);
+  font-size: 18px;
+  font-weight: 700;
+  /* only there when you're on the tile, so the map stays calm */
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 150ms ease, transform 180ms var(--ease-out);
+}
+
+.tile:focus-visible .tile-more,
+.tile .tile-more:focus-visible {
+  opacity: 0.9;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover .tile-more {
+    opacity: 0.85;
+    transform: none;
+  }
+  .tile .tile-more:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--tile-ink) 26%, transparent);
+    color: var(--tile-ink);
+  }
+}
+
+/* no hover on touch screens, so keep it showing there */
+@media (hover: none) {
+  .tile .tile-more {
+    opacity: 0.85;
+    transform: none;
+  }
 }
 
 .tile.is-small .tile-share,
@@ -2728,6 +2889,16 @@ body.ask-open .scrim {
   color: var(--danger);
 }
 
+.proc-menu-line {
+  margin: 4px 6px;
+  border: 0;
+  border-top: 1px solid rgba(243, 237, 228, 0.08);
+}
+
+.dig-menu {
+  transform-origin: top left;
+}
+
 .proc-menu-note {
   margin: 0;
   padding: 6px 10px;
@@ -2754,33 +2925,146 @@ body.ask-open .scrim {
   font-variant-numeric: tabular-nums;
 }
 
-.ai-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: -16px 0 20px;
+/* the space each tool takes: context, so it reads quietly above the list */
+.ai-footprint {
+  margin: -8px 0 36px;
+  padding: 16px 20px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
-.ai-toolbar {
+.ai-footprint[hidden] {
+  display: none;
+}
+
+.ai-footprint-title {
+  margin: 0 0 12px;
+  color: var(--faint);
+  font: 600 12px/1.2 var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+.ai-footprint-grid {
+  /* tiles wrap onto new rows, so two tools or ten line up the same way */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+}
+
+.ai-tool {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.ai-tool-name {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ai-retention {
+.ai-tool-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ai-tool-mark:has(img) {
+  background: none;
+}
+
+.ai-tool-mark img {
+  width: 18px;
+  height: 18px;
+}
+
+.ai-tool-gone {
+  justify-self: start;
+  padding: 1px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ai-tool-size {
+  font: 600 22px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* sections: title and its total on one line, one short sentence under it */
+.ai-group {
+  margin-bottom: 32px;
+}
+
+.ai-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ai-group-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ai-group-size {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-note {
+  max-width: 640px;
+  margin: 4px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ai-keep-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ai-keep-lead {
+  color: var(--faint);
 }
 
 .ai-keep {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .ai-select {
-  padding: 4px 8px;
+  min-height: 30px;
+  padding: 0 8px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--surface-2);
@@ -2788,28 +3072,73 @@ body.ask-open .scrim {
   font: inherit;
 }
 
-.ai-group {
-  margin-bottom: 8px;
-}
-
-.ai-note {
-  max-width: 640px;
-  margin: -4px 0 12px;
-}
-
-.ai-part {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.ai-part .pick-all {
-  position: static;
-}
-
+/* a tool's sessions: one card, ticked as a whole or opened in place */
 .ai-fold {
-  align-self: flex-start;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.ai-fold-head {
+  display: flex;
+  align-items: stretch;
+}
+
+.ai-fold .pick-all {
+  position: static;
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.pick-all-label {
+  display: grid;
+  min-width: 0;
+}
+
+.ai-fold-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ai-fold-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 200ms var(--ease-out);
+}
+
+.ai-fold.is-open .ai-fold-toggle svg {
+  transform: rotate(180deg);
+}
+
+.ai-fold.is-open .ai-list {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ai-fold .pick-all:hover,
+  .ai-fold-toggle:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
 .ai-list {
@@ -3601,6 +3930,357 @@ body.ask-open .scrim {
   }
   .sched-next.is-running .sched-next-mark,
   .sched-steps li.is-now::before {
+    animation: none;
+  }
+}
+
+/* ---------- pay-off: what a finished job came to ---------- */
+
+.payoff {
+  display: grid;
+  gap: 18px;
+  max-width: 640px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  animation: payoff-in 320ms var(--ease-out) both;
+}
+
+@keyframes payoff-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.payoff-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.payoff-amount {
+  color: var(--rot);
+  font: 600 52px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.payoff-verb {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.payoff-disk {
+  display: grid;
+  gap: 8px;
+}
+
+.payoff-disk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.payoff-disk-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.payoff-disk-value b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.payoff-was {
+  color: var(--faint);
+}
+
+.payoff-gain {
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--rot-dim);
+  color: var(--rot);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.payoff-bar {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--surface-3);
+}
+
+.payoff-bar-used,
+.payoff-bar-gain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.payoff-bar-used {
+  left: 0;
+  width: var(--w);
+  background: rgba(243, 237, 228, 0.28);
+}
+
+/* the slice of disk this job gave back, grown in once from where the used part ends */
+.payoff-bar-gain {
+  left: var(--l);
+  width: var(--w);
+  background: var(--rot);
+  transform-origin: left;
+  animation: payoff-grow 600ms var(--ease-out) 150ms both;
+}
+
+.payoff-bar-pending {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--l);
+  width: var(--w);
+  background: repeating-linear-gradient(135deg, var(--rot) 0 3px, transparent 3px 6px);
+  opacity: 0.7;
+}
+
+.payoff-gain.is-pending {
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+@keyframes payoff-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.payoff-rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payoff-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.payoff-row-name {
+  display: grid;
+  min-width: 0;
+}
+
+.payoff-row-name small {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payoff-rows b {
+  flex: none;
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.payoff-rows .payoff-more {
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.payoff-note {
+  margin: 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.payoff.is-empty {
+  justify-items: start;
+  gap: 6px;
+}
+
+.payoff-empty-title {
+  font: 600 22px/1.2 var(--font-display);
+}
+
+/* the same card inside a dialog: tighter, on the dialog's own surface */
+.ask-content {
+  margin-top: 4px;
+  text-align: left;
+}
+
+.ask-content[hidden] {
+  display: none;
+}
+
+.ask-content .payoff {
+  padding: 18px;
+  background: var(--surface-2);
+}
+
+.ask-content .payoff-amount {
+  font-size: 40px;
+}
+
+.ask-content .payoff-disk-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* ---------- toast: small jobs that don't get a screen ---------- */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: calc(50% + 116px);
+  z-index: 40;
+  max-width: min(520px, calc(100vw - 280px));
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  font-size: 13px;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  /* leaving is quicker than arriving */
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.toast.is-in {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition: opacity 200ms ease, transform 240ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payoff,
+  .payoff-bar-gain {
+    animation: none;
+  }
+  .toast,
+  .toast.is-in {
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- the win: pay-off popped over the screen ---------- */
+
+#win {
+  z-index: 32;
+  width: 480px;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+body.win-open .scrim {
+  z-index: 31;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.win-open #win {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.win-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--muted);
+  transition: background-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
+}
+
+.win-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.win-close:active {
+  transform: scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .win-close:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+
+/* Grub hops once as the card lands */
+body.win-open .win-mark {
+  animation: win-hop 520ms var(--ease-out) 120ms both;
+}
+
+@keyframes win-hop {
+  0% {
+    transform: translateY(6px) scale(0.92);
+  }
+  45% {
+    transform: translateY(-6px) scale(1.04);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+#win .payoff {
+  margin-top: 16px;
+  padding: 18px;
+  background: var(--surface-2);
+  text-align: left;
+}
+
+#win .payoff-amount {
+  font-size: 44px;
+}
+
+#win .payoff-disk-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.win-go {
+  min-width: 160px;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.win-open .win-mark {
     animation: none;
   }
 }

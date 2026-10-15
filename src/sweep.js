@@ -303,7 +303,12 @@ function createSweep({ app, env, mo, home, aiTools, readSettings, isBusy, onChan
     }
     const freeAfter = freeSpace();
     const freed = freeBefore != null && freeAfter != null ? Math.max(0, freeAfter - freeBefore) : steps.reduce((n, s) => n + (s.bytes || 0), 0);
-    const result = { at: Date.now(), steps, freed, stopped: cancelled };
+    let total = null;
+    try {
+      const st = fs.statfsSync('/');
+      total = st.blocks * st.bsize;
+    } catch {}
+    const result = { at: Date.now(), steps, freed, stopped: cancelled, disk: freeBefore != null && freeAfter != null && total ? { before: freeBefore, after: freeAfter, total } : null };
     // what was cleaned is gone from the list; the next look starts fresh
     state.found = null;
     state.at = 0;
