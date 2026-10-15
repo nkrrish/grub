@@ -66,6 +66,15 @@ npm start
 
 Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and take questions to [Discussions](https://github.com/nkrrish/grub/discussions).
 
+## More from Attechy
+
+Grub is made by [Nagules Krrish](https://naguleskrrish.com/) at [Attechy](https://attechy.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy). We also make:
+
+- <img src="docs/apps/cuedm.webp" width="20" height="20" alt="" align="top"> [CueDM](https://cuedm.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy): sends your link by DM when someone comments a keyword on your Instagram post.
+- <img src="docs/apps/whisprnote.webp" width="20" height="20" alt="" align="top"> [WhisprNote](https://whisprnote.com/?utm_source=grub&utm_medium=github&utm_campaign=more-from-attechy): AI meeting notes for your Mac.
+- <img src="docs/apps/whispr.webp" width="20" height="20" alt="" align="top"> [Whispr](https://apps.apple.com/gb/app/whispr-your-ai-second-brain/id6758618656): your AI second brain, on iPhone.
+- <img src="docs/apps/rise.webp" width="20" height="20" alt="" align="top"> [Rise](https://apps.apple.com/gb/app/rise-your-daily-quotes/id6759510764): a new quote to start each day, on iPhone.
+
 ## License
 
 Grub is free software under the GNU GPL v3.0 or later (see `LICENSE`), the same license as Mole. Anyone may use, change and share the code, but changed versions must stay GPL-3.0 and ship their source. The Mole inside Grub keeps its own license and copyright; see `NOTICE`.
