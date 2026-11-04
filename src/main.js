@@ -828,49 +828,72 @@ async function asAdmin(sh, prompt, timeout = 600000) {
   return { ok: true, stdout: r.stdout };
 }
 
-// Other accounts' folders and the system's hidden ones are closed to your account; one prompt measures them all.
-async function measureAccounts(names) {
+// sudo runs as Grub's own child, so Full Disk Access still applies; macOS's admin prompt loses it, and then
+// everyone's Desktop, Documents and Downloads read as nothing. The password goes to sudo's stdin and no further.
+function asRoot(password, sh, timeout = 900000) {
+  return new Promise((resolve) => {
+    const child = execFile('/usr/bin/sudo', ['-k', '-S', '-p', '', '/bin/sh', '-c', sh], { env: ENV, timeout, maxBuffer: 64 * 1024 * 1024, cwd: HOME }, (err, stdout, stderr) =>
+      resolve({ err, stdout: stdout || '', stderr: stderr || '' })
+    );
+    child.stdin.on('error', () => {});
+    child.stdin.end(password + '\n');
+  });
+}
+
+const ROOT_OK = 'GRUB-ROOT';
+
+// Other accounts' folders and the system's hidden ones are closed to your account; one password measures them all.
+// du fails on anything it can't enter, which isn't a failed measure, so the script always ends well; the
+// account lines keep du's complaints so Grub can say which folders stayed closed.
+async function measureAccounts(names, password) {
   const sh = [
+    `echo ${ROOT_OK}`,
     ...names.map(
       (n) =>
-        `echo "U ${n}"; du -k -d 1 -x /Users/${n} 2>/dev/null; ` +
+        `echo "U ${n}"; du -k -d 1 -x /Users/${n} 2>&1; ` +
         `for s in .Trash Downloads; do echo "C $s $(find /Users/${n}/$s -mindepth 1 -maxdepth 1 ! -name .DS_Store ! -name .localized 2>/dev/null | wc -l)"; done`
     ),
     'echo "D"; du -k -d 2 -x /System/Volumes/Data 2>/dev/null',
+    'true',
   ].join('; ');
-  const r = await asAdmin(sh, 'Grub wants to measure the other accounts and system folders on this Mac. It only reads sizes; nothing is changed.');
-  if (!r.ok) return r;
+  const r = await asRoot(password, sh);
+  if (!r.stdout.includes(ROOT_OK)) {
+    if (/incorrect password|try again|no password/i.test(r.stderr)) return { ok: false, badPassword: true };
+    return { ok: false, error: r.stderr.trim().split('\n').pop() || r.err?.message || 'sudo didn’t start.' };
+  }
+  if (r.err?.killed) return { ok: false, error: 'Measuring took too long, so Grub stopped it.' };
   const [accountLines, usageLines = ''] = r.stdout.split(/^D$/m);
-  cacheStore().deep = { at: Date.now(), usage: parseUsage(usageLines) };
+  const deep = { at: Date.now(), usage: parseUsage(usageLines) };
   const users = [];
   let cur;
   for (const l of accountLines.split(/\r\n|\r|\n/)) {
     const u = /^U (.+)$/.exec(l);
     const c = /^C (\S+)\s+(\d+)$/.exec(l);
-    if (u) users.push((cur = { name: u[1], lines: [], counts: {} }));
+    const closed = /^du: \/Users\/[^/]+\/([^/]+): Operation not permitted/.exec(l);
+    if (u) users.push((cur = { name: u[1], lines: [], counts: {}, closed: [] }));
     else if (c && cur) cur.counts[c[1]] = +c[2];
+    else if (closed && cur) cur.closed.push(closed[1]);
     else if (cur) cur.lines.push(l);
   }
-  return {
-    ok: true,
-    data: users.map(({ name, lines, counts }) => {
-      const { total, folders } = parseDu(lines, '/Users/' + name);
-      return { name, total, folders, trashItems: counts['.Trash'] ?? null, downloadItems: counts.Downloads ?? null };
-    }),
-  };
+  const data = users.map(({ name, lines, counts, closed }) => {
+    const { total, folders } = parseDu(lines, '/Users/' + name);
+    return { name, total, folders, closed, trashItems: counts['.Trash'] ?? null, downloadItems: counts.Downloads ?? null };
+  });
+  cacheStore().deep = { ...deep, partly: data.filter((u) => u.closed.length).map((u) => u.name) };
+  return { ok: true, data };
 }
 
 // Shared is readable by everyone, so it's measured each time; other accounts only when you ask (it needs your password).
-ipcMain.handle('others:get', async (_e, measure) => {
+ipcMain.handle('others:get', async (_e, password) => {
   const names = otherAccounts();
   const [shared, people] = await Promise.all([
     run('/usr/bin/du', ['-k', '-d', '1', '-x', '/Users/Shared']).then((r) => parseDu(r.stdout.split('\n'), '/Users/Shared')),
     Promise.all(names.map(async (n) => ({ name: n, fullName: await fullName(n) }))),
   ]);
   let measured;
-  if (measure) {
-    measured = await cached('others', true, () => measureAccounts(names));
-    if (!measured.ok) return { ok: false, cancelled: measured.cancelled, error: measured.error };
+  if (typeof password === 'string') {
+    measured = await cached('others', true, () => measureAccounts(names, password));
+    if (!measured.ok) return { ok: false, badPassword: measured.badPassword, error: measured.error };
   } else measured = cacheStore().others;
   const byName = new Map((measured?.data || []).map((u) => [u.name, u]));
   return {

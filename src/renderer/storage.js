@@ -12,7 +12,7 @@ const ST_CONFIRM = {
   temp: (i) => `${i.name} goes to the Trash. The space comes back when you empty it.`,
 };
 
-const st = { loaded: false, at: 0, data: null, busy: new Set() };
+const st = { loaded: false, at: 0, data: null, busy: new Set(), deep: { busy: false, error: '' }, pick: null, fullDisk: true };
 
 function storageOpen() {
   if (!othersLoaded) loadOthers(false);
@@ -23,28 +23,35 @@ function storageOpen() {
 async function storageLoad(fresh) {
   st.loaded = true;
   setFreshness('storage-fresh', st.at, true);
-  if (!st.data) $('#storage-body').replaceChildren(digging('Adding up your whole disk. This takes a minute or two…'));
+  // a quiet line, not a full-page wait: the folder map below doesn't depend on this and shows straight away
+  // the empty bar holds its place, so the map doesn't jump when the real one arrives
+  if (!st.data)
+    $('#storage-top').replaceChildren(el('div', { class: 'ledger-bar ledger-free' }), el('div', { class: 'ledger-peek' }, 'Adding up your whole disk. This takes a minute or two…'));
   const res = await window.mole.storage.get(!!fresh);
   if (!res.ok) {
     setFreshness('storage-fresh', st.at);
-    if (!st.data) $('#storage-body').replaceChildren(el('div', { class: 'empty' }, 'Grub couldn’t add it up: ' + (res.error || 'unknown problem')));
+    if (!st.data) $('#storage-top').replaceChildren(el('div', { class: 'ledger-peek storage-blocked' }, 'Grub couldn’t add it up: ' + (res.error || 'unknown problem')));
     else toast('Grub couldn’t measure again: ' + (res.error || 'unknown problem'));
     return;
   }
   st.data = res.data;
   st.at = res.at;
+  st.fullDisk = (await window.mole.perms.check()).fullDisk;
   setFreshness('storage-fresh', st.at);
   storageRender();
 }
 
 $('#storage-refresh').addEventListener('click', () => storageLoad(true));
 
-async function storageDeeper(btn) {
-  btn.disabled = true;
-  btn.textContent = 'Measuring…';
-  await loadOthers(true);
-  btn.disabled = false;
-  btn.textContent = 'Look deeper';
+// One run at a time, and whatever happens is said right beside the button that started it.
+async function storageDeeper() {
+  if (st.deep.busy) return;
+  st.deep = { busy: true, error: '' };
+  if (st.data) storageRender();
+  const res = await loadOthers(true);
+  st.deep = { busy: false, error: res.error ? String(res.error).slice(0, 220) : '' };
+  if (res.error && !st.data) toast('Grub couldn’t measure: ' + st.deep.error);
+  if (st.data) storageRender();
 }
 
 // Biggest first, so a large unseen share is near the top with its button; free space always ends the bar.
@@ -64,20 +71,83 @@ function storageUnseenNote(d) {
   return `Still closed after the admin look ${ago(d.lookedAt)}. macOS guards some folders even from admins, and Grub needs Full Disk Access to enter the rest.`;
 }
 
+function storageRowExtras(s) {
+  if (s.key !== 'unseen') return null;
+  const btn = el('button', { class: 'row-act', onclick: storageDeeper }, st.deep.busy ? 'Measuring…' : 'Look deeper');
+  btn.disabled = st.deep.busy;
+  return btn;
+}
+
+function storageRowNotes(s) {
+  if (s.key !== 'unseen') return [];
+  return [
+    st.deep.busy ? el('span', { class: 'row-sub' }, 'This can take a few minutes. You can keep using Grub while it works.') : null,
+    st.deep.error ? el('span', { class: 'row-sub storage-blocked', role: 'alert' }, `Grub couldn’t finish: ${st.deep.error}`) : null,
+    !st.fullDisk
+      ? el('span', { class: 'row-sub storage-blocked' }, 'Grub doesn’t have Full Disk Access, so it can’t see everything. ', el('button', { class: 'link-btn', onclick: () => window.mole.perms.open('fullDisk') }, 'Turn it on'))
+      : null,
+  ];
+}
+
 function storageRow(s) {
   return el(
     'div',
-    { class: 'other ledger-row' },
+    {
+      class: `other ledger-row${st.pick === s.key ? ' is-picked' : ''}`,
+      'data-ledger': s.key,
+      onmouseenter: () => storageLight(s.key),
+      onmouseleave: () => storageLight(null),
+    },
     el(
       'div',
       { class: 'other-top' },
       el('span', { class: `ledger-dot ledger-${s.key}`, 'aria-hidden': 'true' }),
-      el('div', { class: 'other-name' }, el('b', {}, s.name), el('span', { class: 'row-sub' }, s.sub)),
-      s.key === 'unseen' ? el('button', { class: 'row-act', onclick: (e) => storageDeeper(e.currentTarget) }, 'Look deeper') : null,
+      el('div', { class: 'other-name' }, el('b', {}, s.name), el('span', { class: 'row-sub' }, s.sub), ...storageRowNotes(s)),
+      storageRowExtras(s),
       el('div', { class: 'other-size' }, bytes(s.size))
     ),
     s.parts?.length ? el('div', { class: 'other-folders ledger-parts' }, ...s.parts.map((p) => el('span', { class: 'chip' }, `${p.name} · ${bytes(p.size)}`))) : null
   );
+}
+
+/* The bar answers straight away: pointing says what a piece is, clicking jumps to its row. */
+
+const ST_PEEK_HINT = 'Point at the bar to see what each part is. Click to jump to it.';
+
+function storagePeek(s) {
+  const peek = $('#ledger-peek');
+  if (!peek) return;
+  if (!s) return peek.replaceChildren(el('span', { class: 'ledger-peek-hint' }, ST_PEEK_HINT));
+  const share = Math.max(1, Math.round((s.size / st.data.total) * 100));
+  peek.replaceChildren(el('span', { class: `ledger-dot ledger-${s.key}`, 'aria-hidden': 'true' }), el('b', {}, s.name), ` ${bytes(s.size)} · ${share}% of your disk`);
+}
+
+function storageLight(key) {
+  $$('.ledger-seg').forEach((b) => b.classList.toggle('is-lit', b.dataset.ledger === key));
+}
+
+function storagePick(key) {
+  st.pick = key;
+  $$('.ledger-row').forEach((r) => r.classList.toggle('is-picked', r.dataset.ledger === key));
+  // your files have a whole map of their own, which says more than their row
+  const target = key === 'home' ? $('#disk-folders') : $(`.ledger-row[data-ledger="${key}"]`);
+  target?.scrollIntoView({ block: key === 'home' ? 'start' : 'center', behavior: REDUCED_MOTION.matches ? 'auto' : 'smooth' });
+}
+
+function storageSeg(s) {
+  const peek = () => storagePeek(s);
+  const clear = () => storagePeek(null);
+  return el('button', {
+    class: `ledger-seg ledger-${s.key}`,
+    'data-ledger': s.key,
+    style: `flex-grow:${s.size}`,
+    'aria-label': `${s.name}, ${bytes(s.size)}`,
+    onmouseenter: peek,
+    onfocus: peek,
+    onmouseleave: clear,
+    onblur: clear,
+    onclick: () => storagePick(s.key),
+  });
 }
 
 async function storageClear(item) {
@@ -141,13 +211,12 @@ function storageRender() {
   const slices = storageSlices(d);
   const known = d.used - d.unseen;
   $('#storage-title').textContent = d.unseen >= 1e9 ? `Grub can name ${bytes(known)} of the ${bytes(d.used)} in use.` : `All ${bytes(d.used)} in use, accounted for.`;
+  $('#storage-top').replaceChildren(
+    el('div', { class: 'ledger-bar' }, ...slices.map(storageSeg)),
+    el('div', { class: 'ledger-peek', id: 'ledger-peek', 'aria-live': 'polite' }, el('span', { class: 'ledger-peek-hint' }, ST_PEEK_HINT))
+  );
   $('#storage-body').replaceChildren(
-    el(
-      'div',
-      { class: 'ledger-bar', role: 'img', 'aria-label': slices.map((s) => `${s.name} ${bytes(s.size)}`).join(', ') },
-      ...slices.map((s) => el('span', { class: `ledger-${s.key}`, style: `flex-grow:${s.size}`, title: `${s.name} · ${bytes(s.size)}` }))
-    ),
-    el('div', { class: 'others-list' }, ...slices.map(storageRow)),
+    el('section', { class: 'others' }, el('div', { class: 'others-head' }, el('h2', {}, 'The whole disk')), el('div', { class: 'others-list' }, ...slices.map(storageRow))),
     ...ST_GROUPS.map((g) => {
       const rows = d.items.filter((i) => i.group === g.key).sort((a, b) => (b.bytes ?? 0) - (a.bytes ?? 0));
       if (!rows.length) return null;

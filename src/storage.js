@@ -22,7 +22,7 @@ function parseUsage(text) {
 }
 
 const GROUPS = [
-  { key: 'home', name: 'Your files', sub: 'Your home folder. Dig into it on the Disk page.' },
+  { key: 'home', name: 'Your files', sub: 'Everything in your home folder.' },
   { key: 'others', name: 'Other accounts', sub: 'Part of what macOS calls Other Users & Shared.' },
   { key: 'shared', name: 'Shared folder', sub: 'Part of what macOS calls Other Users & Shared.' },
   { key: 'apps', name: 'Applications', sub: 'Everything in your Applications folder.' },
@@ -57,7 +57,7 @@ function namedParts(list, total) {
 
 // Adds the disk up from the top: what the volumes say is used, less everything Grub could measure.
 // Whatever's left stays on screen as unseen, so the rows always add up to the real total.
-function ledger({ container, usage, deep, me, accounts }) {
+function ledger({ container, usage, deep, partly = [], me, accounts }) {
   const merged = mergeUsage(usage, deep);
   const sums = Object.fromEntries(GROUPS.map((g) => [g.key, 0]));
   const parts = Object.fromEntries(GROUPS.map((g) => [g.key, []]));
@@ -84,7 +84,7 @@ function ledger({ container, usage, deep, me, accounts }) {
   }
   const dataUsed = container.data;
   const seen = Object.values(sums).reduce((n, v) => n + v, 0);
-  const closed = accounts.filter((a) => !(deep && `Users/${a}` in deep));
+  const closed = accounts.filter((a) => !(deep && `Users/${a}` in deep) || partly.includes(a));
   return {
     total: container.total,
     free: container.free,
@@ -267,17 +267,19 @@ function createStorage({ run, admin, trash, home, uid, accounts }) {
   async function scan(deep) {
     try {
       const container = await readContainer();
-      const r = await run('/usr/bin/du', ['-k', '-d', '2', '-x', DATA], { timeout: 480000 });
-      if (r.err?.killed) return { ok: false, error: 'Measuring took too long. Try again when your Mac is less busy.' };
-      const usage = parseUsage(r.stdout);
       const fresh = deep && Date.now() - deep.at < DEEP_MAX_AGE ? deep : null;
+      // the admin look walked the same disk moments ago and saw more; walking it again is minutes for nothing
+      const justLooked = fresh && Date.now() - fresh.at < 5 * 60e3;
+      const r = justLooked ? null : await run('/usr/bin/du', ['-k', '-d', '2', '-x', DATA], { timeout: 480000 });
+      if (r?.err?.killed) return { ok: false, error: 'Measuring took too long. Try again when your Mac is less busy.' };
+      const usage = r ? parseUsage(r.stdout) : fresh.usage;
       const merged = mergeUsage(usage, fresh?.usage);
       const rows = await findings(merged, container);
       items = new Map(rows.map((i) => [i.id, i]));
       return {
         ok: true,
         data: {
-          ...ledger({ container, usage, deep: fresh?.usage, me, accounts: accounts() }),
+          ...ledger({ container, usage, deep: fresh?.usage, partly: fresh?.partly, me, accounts: accounts() }),
           lookedAt: fresh?.at || null,
           items: rows,
         },

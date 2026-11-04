@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('mole', {
   trash: (p, size) => ipcRenderer.invoke('fs:trash', p, size),
   missing: (paths) => ipcRenderer.invoke('fs:missing', paths),
   forget: (gone) => ipcRenderer.invoke('fs:forget', gone),
-  others: (measure) => ipcRenderer.invoke('others:get', measure),
+  others: (password) => ipcRenderer.invoke('others:get', password),
   storage: {
     get: (fresh) => ipcRenderer.invoke('storage:get', fresh),
     clear: (id) => ipcRenderer.invoke('storage:clear', id),

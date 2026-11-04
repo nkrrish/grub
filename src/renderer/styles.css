@@ -1377,15 +1377,87 @@ body.ask-open #ask {
 .ledger-bar {
   display: flex;
   gap: 2px;
-  height: 22px;
-  margin-bottom: 14px;
+  height: 26px;
   overflow: hidden;
   border-radius: 9px;
 }
 
-.ledger-bar span {
+.ledger-seg {
   flex: 0 1 0;
-  min-width: 3px;
+  min-width: 4px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.ledger-seg:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.ledger-seg.is-lit {
+  filter: brightness(1.3);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ledger-seg:hover {
+    filter: brightness(1.3);
+  }
+}
+
+/* one fixed line, so pointing along the bar never moves the page */
+.ledger-peek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-peek b {
+  color: var(--text);
+}
+
+.ledger-peek-hint {
+  color: var(--faint);
+}
+
+.ledger-row.is-picked {
+  background: var(--surface-2);
+}
+
+.link-btn {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* the map shares the page here, so it takes a set height instead of the whole window */
+.disk-folders {
+  margin-top: 12px;
+}
+
+.disk-folders .map {
+  height: 400px;
+  min-height: 0;
+}
+
+.disk-folders-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.disk-folders-head .fresh {
+  flex: none;
+  margin: 0;
 }
 
 .ledger-home { background: #c4ea63; }
@@ -1422,15 +1494,15 @@ body.ask-open #ask {
   color: var(--nose);
 }
 
-#view-storage .other-name {
+#view-dig .other-name {
   flex: 1;
 }
 
-#view-storage .other-name .row-sub {
+#view-dig .other-name .row-sub {
   display: block;
 }
 
-#view-storage .other-size {
+#view-dig .other-size {
   min-width: 92px;
   text-align: right;
 }

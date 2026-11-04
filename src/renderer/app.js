@@ -364,6 +364,7 @@ function show(view, chore) {
   );
   if (view === 'chores') renderChore(chore);
   if (view === 'dig') {
+    storageOpen();
     const known = digState.cache.get(digState.path);
     if (!digState.loaded) dig(digState.home);
     // a run since the last visit forgot this folder, or it's just old: rescan behind the current view
@@ -374,7 +375,6 @@ function show(view, chore) {
     if (!appsLoaded || isStale(appsAt, TTL.apps)) loadApps(appsLoaded);
     else setFreshness('evict-fresh', appsAt);
   }
-  if (view === 'storage') storageOpen();
   if (view === 'history') loadHistory();
   if (view === 'sweep') sweepRender();
   if (view === 'schedule') showSchedule();
@@ -963,24 +963,36 @@ let othersLoaded = false;
 const folderLabel = (n) => (n === '.Trash' ? 'Trash' : n);
 const itemCount = (n) => `${n} ${n === 1 ? 'item' : 'items'}`;
 
+function askMacPassword(error) {
+  return ask({
+    title: 'Measure everything?',
+    body: 'Other accounts and hidden system folders are closed to you, so this takes your Mac password. Grub only reads sizes, and the password goes straight to sudo and is never stored.',
+    password: true,
+    error,
+    buttons: [
+      { label: 'Not now', value: 'cancel' },
+      { label: 'Measure', value: 'ok-password', primary: true },
+    ],
+  }).then((v) => v?.password ?? null);
+}
+
+// Says how it went, so whoever started it can show that beside their own button.
 async function loadOthers(measure) {
   othersLoaded = true;
-  const btn = $('#others-measure');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Measuring…';
-  }
-  const res = await window.mole.others(measure);
-  if (!res.ok) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Measure';
+  let error;
+  for (;;) {
+    const password = measure ? await askMacPassword(error) : undefined;
+    if (measure && password == null) return { cancelled: true };
+    const res = await window.mole.others(password);
+    if (res.badPassword) {
+      error = 'That password didn’t work. Try again.';
+      continue;
     }
-    if (!res.cancelled) $('#others-error')?.replaceChildren('Grub couldn’t measure them: ' + res.error);
-    return;
+    if (!res.ok) return { error: res.error || 'unknown problem' };
+    renderOthers(res);
+    if (measure) await storageLoad(true);
+    return { ok: true };
   }
-  renderOthers(res);
-  if (measure) await storageLoad(true);
 }
 
 function otherRow({ title, sub, size, folders, tips, action }) {
@@ -994,7 +1006,7 @@ function otherRow({ title, sub, size, folders, tips, action }) {
       size != null ? el('div', { class: 'other-size' }, bytes(size)) : action
     ),
     folders?.length
-      ? el('div', { class: 'other-folders' }, ...folders.slice(0, 6).map((f) => el('span', { class: 'chip' }, `${folderLabel(f.name)} · ${bytes(f.size)}`)))
+      ? el('div', { class: 'other-folders' }, ...folders.filter((f) => f.size >= 1e6).slice(0, 6).map((f) => el('span', { class: 'chip' }, `${folderLabel(f.name)} · ${bytes(f.size)}`)))
       : null,
     tips?.length ? el('ul', { class: 'other-tips' }, ...tips.map((t) => el('li', {}, t))) : null
   );
@@ -1010,7 +1022,7 @@ function renderOthers({ shared, users, measuredAt }) {
         otherRow({
           title: who,
           sub: 'Another account on this Mac. Its folders are private, so seeing their size takes your Mac password.',
-          action: el('button', { class: 'row-act', id: 'others-measure', onclick: () => loadOthers(true) }, 'Measure'),
+          action: el('button', { class: 'row-act', onclick: storageDeeper }, 'Measure'),
         })
       );
       continue;
@@ -1027,6 +1039,8 @@ function renderOthers({ shared, users, measuredAt }) {
       tips.push(
         `Downloads: ${u.downloadItems != null ? itemCount(u.downloadItems) + ', ' : ''}${bytes(downloads)}. Old installers and one-off files pile up here; clearing what ${first} no longer needs could free a good chunk of it.`
       );
+    if (u.closed?.length)
+      tips.push(`Grub couldn’t get into ${u.closed.map(folderLabel).join(', ')}, so ${first}’s real size is larger than this.`);
     if (size('Library') >= 5e9) tips.push(`Library: ${bytes(size('Library'))} of app data and caches. Running Grub while signed in as ${first} cleans the caches in it.`);
     rows.push(otherRow({ title: who, sub: `Measured ${ago(measuredAt)}. Only ${first} can clear these, from their own account.`, size: u.total, folders: u.folders, tips }));
   }
@@ -1039,15 +1053,15 @@ function renderOthers({ shared, users, measuredAt }) {
         size: shared.total,
         folders: shared.folders,
         tips: [
-          `Mostly files apps keep for everyone${top.length ? ` (${top.join(', ')})` : ''}. They go away when you uninstall the app that put them there, from Evict.`,
+          `Mostly files apps keep for everyone${top.length ? ` (${top.join(', ')})` : ''}. They go away when you uninstall the app that put them there, from Uninstall.`,
         ],
       })
     );
   }
   $('#storage-others').hidden = !rows.length;
-  $('#others-list').replaceChildren(...rows, el('p', { class: 'other-error', id: 'others-error' }));
+  $('#others-list').replaceChildren(...rows);
   if (measuredAt && users.some((u) => u.total != null))
-    $('#others-list').append(el('button', { class: 'other-again', id: 'others-measure', onclick: () => loadOthers(true) }, 'Measure again'));
+    $('#others-list').append(el('button', { class: 'other-again', onclick: storageDeeper }, 'Measure again'));
 }
 
 function setLayout(layout) {
