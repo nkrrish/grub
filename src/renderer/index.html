@@ -49,6 +49,10 @@
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 4v8l6 4" /></svg>
             <span>Disk</span>
           </button>
+          <button class="nav-item" data-view="storage">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="6" rx="2" /><rect x="3" y="13" width="18" height="6" rx="2" /><path d="M7 8h.01M7 16h.01" /></svg>
+            <span>Storage</span>
+          </button>
           <div class="nav-label">Chores</div>
           <button class="nav-item" data-view="chores" data-chore="clean">
             <svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" /><path d="M9 8V5h6v3" /></svg>
@@ -232,7 +236,23 @@
           </div>
           <div class="map" id="dig-map"></div>
           <div class="list" id="dig-list"></div>
-          <section class="others" id="dig-others" hidden>
+        </section>
+
+        <!-- STORAGE -->
+        <section class="view" id="view-storage">
+          <header class="view-head">
+            <p class="eyebrow">Storage</p>
+            <h1 id="storage-title">Adding up your whole disk.</h1>
+            <p class="lede">Your whole disk, including what macOS files under System Data and Other Users &amp; Shared. Sizes use the same units as System Settings, but its rows are sorted differently.</p>
+            <div class="fresh" id="storage-fresh">
+              <button class="fresh-btn" id="storage-refresh" title="Dig again" aria-label="Dig again">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>
+                <span class="fresh-text"></span>
+              </button>
+            </div>
+          </header>
+          <div id="storage-body"></div>
+          <section class="others" id="storage-others" hidden>
             <div class="others-head">
               <h2>Outside your folder</h2>
               <p class="others-lede">What macOS calls Other Users &amp; Shared. Grub only looks; nothing here gets touched.</p>
@@ -519,6 +539,7 @@
     <script src="app.js"></script>
     <script src="runner.js"></script>
     <script src="aitools.js"></script>
+    <script src="storage.js"></script>
     <script src="schedule.js"></script>
     <script src="sweep.js"></script>
   </body>

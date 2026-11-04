@@ -365,7 +365,6 @@ function show(view, chore) {
   if (view === 'chores') renderChore(chore);
   if (view === 'dig') {
     const known = digState.cache.get(digState.path);
-    if (!othersLoaded) loadOthers(false);
     if (!digState.loaded) dig(digState.home);
     // a run since the last visit forgot this folder, or it's just old: rescan behind the current view
     else if (!known || isStale(known.at, TTL.disk)) dig(digState.path, null, true);
@@ -375,6 +374,7 @@ function show(view, chore) {
     if (!appsLoaded || isStale(appsAt, TTL.apps)) loadApps(appsLoaded);
     else setFreshness('evict-fresh', appsAt);
   }
+  if (view === 'storage') storageOpen();
   if (view === 'history') loadHistory();
   if (view === 'sweep') sweepRender();
   if (view === 'schedule') showSchedule();
@@ -980,6 +980,7 @@ async function loadOthers(measure) {
     return;
   }
   renderOthers(res);
+  if (measure) await storageLoad(true);
 }
 
 function otherRow({ title, sub, size, folders, tips, action }) {
@@ -1043,7 +1044,7 @@ function renderOthers({ shared, users, measuredAt }) {
       })
     );
   }
-  $('#dig-others').hidden = !rows.length;
+  $('#storage-others').hidden = !rows.length;
   $('#others-list').replaceChildren(...rows, el('p', { class: 'other-error', id: 'others-error' }));
   if (measuredAt && users.some((u) => u.total != null))
     $('#others-list').append(el('button', { class: 'other-again', id: 'others-measure', onclick: () => loadOthers(true) }, 'Measure again'));

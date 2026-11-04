@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld('mole', {
   missing: (paths) => ipcRenderer.invoke('fs:missing', paths),
   forget: (gone) => ipcRenderer.invoke('fs:forget', gone),
   others: (measure) => ipcRenderer.invoke('others:get', measure),
+  storage: {
+    get: (fresh) => ipcRenderer.invoke('storage:get', fresh),
+    clear: (id) => ipcRenderer.invoke('storage:clear', id),
+  },
   finderHidden: () => ipcRenderer.invoke('finder:hidden'),
   setFinderHidden: (on) => ipcRenderer.invoke('finder:setHidden', on),
   appIcon: (p) => ipcRenderer.invoke('app:icon', p),

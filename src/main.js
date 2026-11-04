@@ -8,6 +8,7 @@ const { createScheduler } = require('./schedule');
 const aiTools = require('./aitools');
 const updater = require('./updater');
 const { createSweep } = require('./sweep');
+const { createStorage, parseUsage } = require('./storage');
 
 // Apps launched from Finder get a bare PATH, so look for Homebrew's tools directly.
 const PATH_EXTRA = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
@@ -816,24 +817,34 @@ async function fullName(user) {
   return r.stdout.trim() || user;
 }
 
-// Their folders are closed to your account, so macOS's own admin prompt runs the measuring; Grub never sees the password.
+// macOS's own admin prompt runs the script, so Grub never sees the password.
+async function asAdmin(sh, prompt, timeout = 600000) {
+  const r = await run(
+    '/usr/bin/osascript',
+    ['-e', 'on run argv', '-e', 'do shell script (item 1 of argv) with prompt (item 2 of argv) with administrator privileges', '-e', 'end run', sh, prompt],
+    { timeout }
+  );
+  if (r.err) return { ok: false, cancelled: /-128|cancel/i.test(r.stderr), error: r.stderr.trim() || r.err.message, stdout: '' };
+  return { ok: true, stdout: r.stdout };
+}
+
+// Other accounts' folders and the system's hidden ones are closed to your account; one prompt measures them all.
 async function measureAccounts(names) {
-  const sh = names
-    .map(
+  const sh = [
+    ...names.map(
       (n) =>
         `echo "U ${n}"; du -k -d 1 -x /Users/${n} 2>/dev/null; ` +
         `for s in .Trash Downloads; do echo "C $s $(find /Users/${n}/$s -mindepth 1 -maxdepth 1 ! -name .DS_Store ! -name .localized 2>/dev/null | wc -l)"; done`
-    )
-    .join('; ');
-  const r = await run(
-    '/usr/bin/osascript',
-    ['-e', 'on run argv', '-e', 'do shell script (item 1 of argv) with prompt (item 2 of argv) with administrator privileges', '-e', 'end run', sh, 'Grub wants to measure the other accounts on this Mac. It only reads sizes; nothing is changed.'],
-    { timeout: 600000 }
-  );
-  if (r.err) return { ok: false, cancelled: /-128|cancel/i.test(r.stderr), error: r.stderr.trim() || r.err.message };
+    ),
+    'echo "D"; du -k -d 2 -x /System/Volumes/Data 2>/dev/null',
+  ].join('; ');
+  const r = await asAdmin(sh, 'Grub wants to measure the other accounts and system folders on this Mac. It only reads sizes; nothing is changed.');
+  if (!r.ok) return r;
+  const [accountLines, usageLines = ''] = r.stdout.split(/^D$/m);
+  cacheStore().deep = { at: Date.now(), usage: parseUsage(usageLines) };
   const users = [];
   let cur;
-  for (const l of r.stdout.split(/\r\n|\r|\n/)) {
+  for (const l of accountLines.split(/\r\n|\r|\n/)) {
     const u = /^U (.+)$/.exec(l);
     const c = /^C (\S+)\s+(\d+)$/.exec(l);
     if (u) users.push((cur = { name: u[1], lines: [], counts: {} }));
@@ -857,7 +868,7 @@ ipcMain.handle('others:get', async (_e, measure) => {
     Promise.all(names.map(async (n) => ({ name: n, fullName: await fullName(n) }))),
   ]);
   let measured;
-  if (measure && names.length) {
+  if (measure) {
     measured = await cached('others', true, () => measureAccounts(names));
     if (!measured.ok) return { ok: false, cancelled: measured.cancelled, error: measured.error };
   } else measured = cacheStore().others;
@@ -869,6 +880,14 @@ ipcMain.handle('others:get', async (_e, measure) => {
     users: people.map((p) => ({ ...p, ...(byName.get(p.name) || {}) })),
   };
 });
+
+const storage = createStorage({ run, admin: asAdmin, trash: (p) => shell.trashItem(p), home: HOME, uid: UID, accounts: otherAccounts });
+ipcMain.handle('storage:get', async (_e, fresh) => {
+  const res = await cached('storage', fresh, () => storage.scan(cacheStore().deep));
+  if (res.ok) storage.remember(res.data.items);
+  return res;
+});
+ipcMain.handle('storage:clear', (_e, id) => storage.clear(id));
 
 // Finder hides dot folders (.cache, .ollama) unless this is on; ⌘⇧. flips it for one window only.
 ipcMain.handle('finder:hidden', async () => {

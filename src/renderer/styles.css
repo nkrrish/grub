@@ -66,6 +66,8 @@ button {
 .sidebar {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  max-height: 100vh;
   padding: 52px 14px 16px;
   background: var(--surface);
   border-right: 1px solid var(--line);
@@ -98,6 +100,13 @@ button {
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.nav > * {
+  flex: none;
 }
 
 .nav-label {
@@ -1362,6 +1371,68 @@ body.ask-open #ask {
   .other-again:hover {
     color: var(--text);
   }
+}
+
+/* Storage: one bar for the whole disk, then the same rows as a list */
+.ledger-bar {
+  display: flex;
+  gap: 2px;
+  height: 22px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  border-radius: 9px;
+}
+
+.ledger-bar span {
+  flex: 0 1 0;
+  min-width: 3px;
+}
+
+.ledger-home { background: #c4ea63; }
+.ledger-others { background: #8a5a60; }
+.ledger-shared { background: #f4a7b0; }
+.ledger-apps { background: #8fae45; }
+.ledger-assets { background: #5d6e35; }
+.ledger-library { background: #a8835f; }
+.ledger-work { background: #6f5848; }
+.ledger-tools { background: #4a3b2f; }
+.ledger-macos { background: var(--faint); }
+.ledger-free { background: var(--surface-2); }
+
+.ledger-unseen {
+  background: repeating-linear-gradient(135deg, var(--line-strong) 0 4px, transparent 4px 8px);
+}
+
+.ledger-row .other-top {
+  justify-content: flex-start;
+}
+
+.ledger-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.ledger-parts {
+  padding-left: 28px;
+}
+
+.storage-blocked {
+  color: var(--nose);
+}
+
+#view-storage .other-name {
+  flex: 1;
+}
+
+#view-storage .other-name .row-sub {
+  display: block;
+}
+
+#view-storage .other-size {
+  min-width: 92px;
+  text-align: right;
 }
 
 /* "Hidden": Finder won't show this dot folder, which is why it seemed to be missing */
